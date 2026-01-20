@@ -96,14 +96,19 @@ function ContentBlockView({ block }: { block: ContentBlock }): React.ReactElemen
 				</Box>
 			)
 
-		case "table":
+		case "table": {
+			// Calculate column width based on terminal width
+			// Sidebar is 30 chars + borders, leave some margin
+			const termWidth = process.stdout.columns || 80
+			const contentWidth = termWidth - 36 // sidebar + borders + padding
+			const colWidth = Math.max(12, Math.floor(contentWidth / block.headers.length))
 			return (
 				<Box flexDirection="column" marginBottom={1}>
 					<Box>
 						{block.headers.map((header, i) => (
-							<Box key={i} width={20}>
+							<Box key={i} width={colWidth}>
 								<Text bold>
-									{typeof header === "string" ? header : ""}
+									<RichTextSpan content={header} />
 								</Text>
 							</Box>
 						))}
@@ -111,16 +116,21 @@ function ContentBlockView({ block }: { block: ContentBlock }): React.ReactElemen
 					{block.rows.map((row, rowIdx) => (
 						<Box key={rowIdx}>
 							{row.map((cell, cellIdx) => (
-								<Box key={cellIdx} width={20}>
-									<Text color={cellIdx === block.monospaceCol ? "yellow" : undefined}>
-										{typeof cell === "string" ? cell : ""}
-									</Text>
+								<Box key={cellIdx} width={colWidth}>
+									{cellIdx === block.monospaceCol ? (
+										<Text color="yellow">
+											<RichTextSpan content={cell} />
+										</Text>
+									) : (
+										<RichTextSpan content={cell} />
+									)}
 								</Box>
 							))}
 						</Box>
 					))}
 				</Box>
 			)
+		}
 
 		case "list":
 			return (
@@ -129,11 +139,22 @@ function ContentBlockView({ block }: { block: ContentBlock }): React.ReactElemen
 						const text = typeof item === "string" || Array.isArray(item)
 							? item
 							: item.text
+						const children = typeof item === "object" && !Array.isArray(item)
+							? item.children
+							: undefined
 						const prefix = block.ordered ? `${i + 1}.` : "•"
 						return (
-							<Box key={i}>
-								<Text>{prefix} </Text>
-								<RichTextSpan content={text as string | RichText} />
+							<Box key={i} flexDirection="column">
+								<Box>
+									<Text>{prefix} </Text>
+									<RichTextSpan content={text as string | RichText} />
+								</Box>
+								{children?.map((child, ci) => (
+									<Box key={ci} marginLeft={2}>
+										<Text dimColor>  • </Text>
+										<RichTextSpan content={child} />
+									</Box>
+								))}
 							</Box>
 						)
 					})}
@@ -144,11 +165,19 @@ function ContentBlockView({ block }: { block: ContentBlock }): React.ReactElemen
 			return (
 				<Box flexDirection="column" marginBottom={1}>
 					{block.messages.map((msg, i) => (
-						<Box key={i} marginBottom={1}>
-							<Text color={msg.role === "user" ? "blue" : "green"} bold>
-								{msg.role === "user" ? "You: " : "AI: "}
-							</Text>
-							<RichTextSpan content={msg.text} />
+						<Box key={i} flexDirection="column" marginBottom={1}>
+							<Box>
+								<Text color={msg.role === "user" ? "blue" : "green"} bold>
+									{msg.role === "user" ? "You: " : "AI: "}
+								</Text>
+								<RichTextSpan content={msg.text} />
+							</Box>
+							{msg.list?.map((item, li) => (
+								<Box key={li} marginLeft={3}>
+									<Text dimColor>• </Text>
+									<RichTextSpan content={item} />
+								</Box>
+							))}
 						</Box>
 					))}
 				</Box>
