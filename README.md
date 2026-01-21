@@ -1,5 +1,7 @@
 # @levitate/docs-tui
 
+> **STOP. READ. THEN ACT.** Before writing code, read the existing components. Before deleting anything, read it first.
+
 Terminal UI documentation viewer for LevitateOS. Renders the same content as the website in your terminal.
 
 ## Installation
