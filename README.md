@@ -4,6 +4,37 @@
 
 Terminal UI documentation viewer for LevitateOS. Renders the same content as the website in your terminal.
 
+## Status
+
+| Metric | Value |
+|--------|-------|
+| Stage | Alpha |
+| Target | Node.js/Bun terminal |
+| Last verified | 2026-01-23 |
+
+### Works
+
+- Ink-based terminal rendering
+- Content parity with website
+- Keyboard navigation
+- Syntax highlighting
+
+### Known Issues
+
+- See parent repo issues
+
+---
+
+## Author
+
+<!-- HUMAN WRITTEN - DO NOT MODIFY -->
+
+[Waiting for human input]
+
+<!-- END HUMAN WRITTEN -->
+
+---
+
 ## Installation
 
 ```bash
