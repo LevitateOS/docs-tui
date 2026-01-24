@@ -1,22 +1,21 @@
 {
   "name": "@levitate/docs-tui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "bin": {
-    "levitate-docs": "./src/index.tsx"
+    "levitate-docs": "./src/index.ts"
   },
   "scripts": {
-    "dev": "bun src/index.tsx",
+    "dev": "bun src/index.ts",
+    "test": "bun test",
+    "test:pages": "bun src/index.ts --all",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@levitate/docs-content": "workspace:*",
-    "ink": "^5.2.0",
-    "react": "^18.3.1"
+    "@levitate/docs-content": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "^1.2.17",
-    "@types/react": "^18.3.18",
     "typescript": "^5.7.2"
   }
 }
