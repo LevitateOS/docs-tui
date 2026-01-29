@@ -7,7 +7,7 @@
 import { contentBySlug, type DocsContent } from "@levitate/docs-content"
 import { screen, applyStyle, fitToWidth, color, type StyledLine } from "./screen"
 import { setupInput, type Key } from "./input"
-import { calculateLayout, drawSeparator, drawHorizontalLine, type Layout } from "./layout"
+import { calculateLayout, drawSeparator, drawHorizontalLine, validateTerminalSize, type Layout } from "./layout"
 import { Sidebar, flattenNav, type SidebarItem } from "../components/Sidebar"
 import { Content, ContentHeader } from "../components/Content"
 
@@ -27,12 +27,14 @@ interface AppState {
 	contentLines: StyledLine[]
 	/** Current layout */
 	layout: Layout
+	/** Whether running in tmux split-screen mode */
+	tmuxMode: boolean
 }
 
 /**
  * Create initial application state
  */
-function createInitialState(): AppState {
+function createInitialState(tmuxMode: boolean): AppState {
 	const navItems = flattenNav()
 	const layout = calculateLayout()
 	const firstContent = navItems[0] ? contentBySlug[navItems[0].slug] : undefined
@@ -45,6 +47,7 @@ function createInitialState(): AppState {
 		shouldExit: false,
 		contentLines,
 		layout,
+		tmuxMode,
 	}
 }
 
@@ -116,7 +119,8 @@ function render(state: AppState): void {
 
 	// Render footer with help
 	screen.moveTo(1, layout.rows)
-	screen.write(color.dim + "q: quit  ←→: pages  ↑↓jk: scroll  PgUp/PgDn: fast scroll" + color.reset)
+	const modeIndicator = state.tmuxMode ? " [Ctrl+b←→: switch panes]" : ""
+	screen.write(color.dim + "q: quit  ←→: pages  ↑↓jk: scroll  PgUp/PgDn: fast scroll" + modeIndicator + color.reset)
 }
 
 /**
@@ -204,12 +208,22 @@ function handleKey(state: AppState, key: Key): AppState {
 /**
  * Main entry point for the TUI
  */
-export function startTUI(): void {
+export function startTUI(tmuxMode = false): void {
+	// Validate terminal size
+	if (!validateTerminalSize(tmuxMode)) {
+		process.exit(1)
+	}
+
 	// Initialize state
-	let state = createInitialState()
+	let state = createInitialState(tmuxMode)
 
 	// Enter alternate screen and hide cursor
-	screen.enterAltScreen()
+	// Skip alt screen in tmux mode (tmux handles it)
+	if (!state.tmuxMode) {
+		screen.enterAltScreen()
+	} else {
+		screen.clear()
+	}
 	screen.hideCursor()
 
 	// Initial render
@@ -232,7 +246,9 @@ export function startTUI(): void {
 		if (state.shouldExit) {
 			// Clean up and exit
 			screen.showCursor()
-			screen.exitAltScreen()
+			if (!state.tmuxMode) {
+				screen.exitAltScreen()
+			}
 			cleanup()
 			process.exit(0)
 		}
@@ -243,14 +259,18 @@ export function startTUI(): void {
 	// Handle process termination
 	process.on("SIGINT", () => {
 		screen.showCursor()
-		screen.exitAltScreen()
+		if (!state.tmuxMode) {
+			screen.exitAltScreen()
+		}
 		cleanup()
 		process.exit(0)
 	})
 
 	process.on("SIGTERM", () => {
 		screen.showCursor()
-		screen.exitAltScreen()
+		if (!state.tmuxMode) {
+			screen.exitAltScreen()
+		}
 		cleanup()
 		process.exit(0)
 	})

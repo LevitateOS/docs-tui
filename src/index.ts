@@ -175,10 +175,14 @@ Usage:
   bun src/index.ts --all        Print all pages (for testing)
   bun src/index.ts --help       Show this help
 
+For split-screen with shell:
+  bun run split                 Launch with tmux (shell + docs side-by-side)
+
 Examples:
   bun src/index.ts --page getting-started
   bun src/index.ts --page recipe-format
   bun src/index.ts --all 2>&1 | less -R
+  bun run split
 
 Navigation (interactive mode):
   ← →        Navigate between pages
@@ -187,6 +191,11 @@ Navigation (interactive mode):
   g G        Jump to top/bottom
   Space b    Page down/up
   q          Quit
+
+In split-screen mode:
+  Ctrl+b ←   Switch to shell pane
+  Ctrl+b →   Switch to docs pane
+  Ctrl+b x   Close current pane (closes session if only one left)
 `)
 }
 
@@ -212,5 +221,6 @@ if (args.includes("--help") || args.includes("-h")) {
 	printPage(slug)
 } else {
 	// Interactive mode - start the TUI
-	startTUI()
+	const tmuxMode = args.includes("--tmux-mode")
+	startTUI(tmuxMode)
 }

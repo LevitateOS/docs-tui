@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "bun src/index.ts",
+    "split": "bash bin/levitate-docs-split",
     "test": "bun test",
     "test:pages": "bun src/index.ts --all",
     "typecheck": "tsc --noEmit"

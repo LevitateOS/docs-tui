@@ -27,6 +27,12 @@ const SIDEBAR_WIDTH = 28
 /** Reserved rows for header/footer/borders */
 const RESERVED_ROWS = 4
 
+/** Minimum terminal width for standalone mode - keep low to avoid blocking on narrow terminals */
+const MIN_WIDTH_STANDALONE = 40
+
+/** Minimum terminal width for tmux split-screen mode - keep low to avoid blocking */
+const MIN_WIDTH_TMUX = 40
+
 /**
  * Calculate layout dimensions based on current terminal size
  */
@@ -65,4 +71,22 @@ export function drawSeparator(col: number, height: number): void {
 export function drawHorizontalLine(row: number, startCol: number, width: number): void {
 	screen.moveTo(startCol, row)
 	screen.write("─".repeat(width))
+}
+
+/**
+ * Validate terminal size is sufficient for TUI
+ */
+export function validateTerminalSize(tmuxMode: boolean): boolean {
+	const { cols } = screen.size()
+	const minWidth = tmuxMode ? MIN_WIDTH_TMUX : MIN_WIDTH_STANDALONE
+
+	if (cols < minWidth) {
+		console.error(`\x1b[31mError: Terminal too narrow (${cols} cols)\x1b[0m`)
+		console.error(`Minimum width: ${minWidth} columns`)
+		if (tmuxMode) {
+			console.error(`Tip: Resize tmux pane or terminal window`)
+		}
+		return false
+	}
+	return true
 }
