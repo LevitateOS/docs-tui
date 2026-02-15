@@ -16,6 +16,7 @@ export { TableBlock } from "./TableBlock"
 export { InteractiveBlock } from "./InteractiveBlock"
 export { ConversationBlock } from "./ConversationBlock"
 export { QABlock } from "./QABlock"
+export { NoteBlock } from "./NoteBlock"
 
 // Re-export shared utilities
 export { inlineToString, inlineToAnsi, type StyledLine } from "./shared"
@@ -29,6 +30,7 @@ import { TableBlock } from "./TableBlock"
 import { InteractiveBlock } from "./InteractiveBlock"
 import { ConversationBlock } from "./ConversationBlock"
 import { QABlock } from "./QABlock"
+import { NoteBlock } from "./NoteBlock"
 
 /**
  * Render any content block to styled lines
@@ -49,11 +51,13 @@ export function renderBlock(block: ContentBlock, width: number): StyledLine[] {
 			return InteractiveBlock(block, width)
 		case "conversation":
 			return ConversationBlock(block, width)
-		case "qa":
-			return QABlock(block, width)
-		default:
-			// TypeScript exhaustiveness check
-			const _exhaustive: never = block
-			return [{ text: `Unknown block type: ${(block as any).type}` }]
+			case "qa":
+				return QABlock(block, width)
+			case "note":
+				return NoteBlock(block, width)
+			default:
+				// TypeScript exhaustiveness check
+				const _exhaustive: never = block
+				return [{ text: `Unknown block type: ${(block as any).type}` }]
+		}
 	}
-}
