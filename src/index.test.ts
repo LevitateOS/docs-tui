@@ -142,7 +142,7 @@ describe("docs rendering via tui-kit", () => {
       expect(pageLines.length).toBeGreaterThan(0);
 
       const header = renderDocsHeader(content, item.slug, 0, pageLines.length, 20, 80);
-      expect(header.length).toBe(3);
+      expect(header.length).toBe(4);
     }
   });
 
@@ -211,7 +211,7 @@ describe("viewport calculations", () => {
     expect(viewport.endLine).toBeLessThanOrEqual(viewport.totalLines);
     expect(viewport.bodyLines.length).toBeLessThanOrEqual(viewport.visibleRows);
     expect(
-      viewport.headerLines[1]?.includes(
+      viewport.headerLines[2]?.includes(
         `(${viewport.startLine}-${viewport.endLine}/${viewport.totalLines})`,
       ),
     ).toBe(true);
@@ -223,8 +223,8 @@ describe("docs theme", () => {
     const theme = createDocsTuiTheme();
     expect(theme.layout.sidebarWidth).toBe(34);
     expect(theme.layout.minColumns).toBe(90);
-    expect(theme.colors.text.truecolor).toBe("#e6edf3");
+    expect(theme.colors.text.truecolor).toBe("#e5e7eb");
     expect(theme.colors.accent.ansi16).toBe("cyan");
-    expect(theme.colors.warning.ansi256).toBe(221);
+    expect(theme.colors.warning.ansi256).toBe(220);
   });
 });
