@@ -10,11 +10,11 @@
     "dev": "bun src/index.ts",
     "split": "bash bin/levitate-docs-split",
     "test": "bun test",
-    "test:pages": "bun src/index.ts --all",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@levitate/docs-content": "workspace:*"
+    "@levitate/docs-content": "workspace:*",
+    "@levitate/tui-kit": "file:../../shared/tui-kit"
   },
   "devDependencies": {
     "@types/bun": "^1.2.17",

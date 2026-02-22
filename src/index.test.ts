@@ -1,433 +1,230 @@
-import { describe, it, expect, beforeAll } from "bun:test"
+import { describe, expect, it } from "bun:test";
+import { contentBySlug, docsNav } from "@levitate/docs-content";
 import {
-	docsNav,
-	contentBySlug,
-	type DocsContent,
-	type ContentBlock,
-	type RichText,
-	type InlineNode,
-	type Section,
-} from "@levitate/docs-content"
+  flattenDocsNav,
+  renderDocsHeader,
+  renderDocsPageLines,
+  renderDocsSidebar,
+} from "@levitate/tui-kit/docs";
+import { docsCliHelpText, parseCliArgs } from "./index";
+import { createDocsTuiTheme } from "./theme";
+import { computeDocsViewport, resolveInitialDocIndex, resolveInitialDocSelection } from "./tui-blessed";
 
-// ============================================================================
-// Test Utilities - mirrors the rendering logic
-// ============================================================================
-
-function inlineToString(content: string | RichText): string {
-	if (typeof content === "string") return content
-	return content.map((node: InlineNode) => {
-		if (typeof node === "string") return node
-		return node.text
-	}).join("")
+function hasStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
-function renderBlockToString(block: ContentBlock, width = 60): string[] {
-	const lines: string[] = []
+function collectSyntaxSnapshotIssues(
+  slug: string,
+  blocks: ReadonlyArray<unknown>,
+  issues: string[],
+  pathPrefix: string,
+): void {
+  for (const [index, rawBlock] of blocks.entries()) {
+    const path = `${pathPrefix}[${index}]`;
+    if (typeof rawBlock !== "object" || rawBlock === null) {
+      issues.push(`${slug}:${path} malformed block`);
+      continue;
+    }
+    const block = rawBlock as Record<string, unknown>;
+    const blockType = typeof block.type === "string" ? block.type : "(unknown)";
 
-	switch (block.type) {
-		case "text":
-			lines.push(inlineToString(block.content))
-			break
-		case "code":
-			if (block.filename) lines.push(`┌─ ${block.filename}`)
-			lines.push("╭" + "─".repeat(width - 2) + "╮")
-			for (const line of block.content.split("\n")) {
-				lines.push("│ " + line)
-			}
-			lines.push("╰" + "─".repeat(width - 2) + "╯")
-			break
-		case "command": {
-			lines.push(block.description)
-			lines.push("╭" + "─".repeat(width - 2) + "╮")
-			const cmd = Array.isArray(block.command) ? block.command.join("\n") : block.command
-			for (const line of cmd.split("\n")) {
-				lines.push("│ $ " + line)
-			}
-			lines.push("╰" + "─".repeat(width - 2) + "╯")
-			if (block.output) lines.push("→ " + block.output)
-			break
-		}
-		case "list":
-			for (let i = 0; i < block.items.length; i++) {
-				const item = block.items[i]
-				const prefix = block.ordered ? `${i + 1}.` : "•"
-				const text = typeof item === "object" && !Array.isArray(item) && "text" in item
-					? inlineToString(item.text)
-					: inlineToString(item as string | RichText)
-				lines.push(`${prefix} ${text}`)
-				if (typeof item === "object" && !Array.isArray(item) && "children" in item && item.children) {
-					for (const child of item.children) {
-						lines.push(`   ◦ ${inlineToString(child)}`)
-					}
-				}
-			}
-			break
-		case "table": {
-			const colW = Math.floor((width - 4) / block.headers.length)
-			const header = block.headers.map(h => inlineToString(h).padEnd(colW).slice(0, colW)).join(" │ ")
-			lines.push(header)
-			lines.push("─".repeat(colW * block.headers.length + (block.headers.length - 1) * 3))
-			for (const row of block.rows) {
-				const rowStr = row.map(cell => inlineToString(cell).padEnd(colW).slice(0, colW)).join(" │ ")
-				lines.push(rowStr)
-			}
-			break
-		}
-		case "interactive":
-			if (block.intro) lines.push(inlineToString(block.intro))
-			for (const step of block.steps) {
-				lines.push(`  ${step.command}`)
-				lines.push(`    ${inlineToString(step.description)}`)
-			}
-			break
-		case "conversation":
-			for (const msg of block.messages) {
-				const role = msg.role === "user" ? "You:" : "AI:"
-				lines.push(`${role} ${inlineToString(msg.text)}`)
-				if (msg.list) {
-					for (const item of msg.list) {
-						lines.push(`    • ${inlineToString(item)}`)
-					}
-				}
-			}
-			break
-		case "qa":
-			for (const item of block.items) {
-				lines.push(`Q: ${inlineToString(item.question)}`)
-				lines.push("A:")
-				for (const ans of item.answer) {
-					const ansLines = renderBlockToString(ans, width - 3)
-					for (const line of ansLines) {
-						lines.push("   " + line)
-					}
-				}
-			}
-			break
-	}
+    if (blockType === "code") {
+      if (typeof block.language !== "string" || block.language.trim().length === 0) {
+        issues.push(`${slug}:${path} missing code language`);
+      }
+      if (!hasStringArray(block.highlightedLines)) {
+        issues.push(`${slug}:${path} missing code highlightedLines`);
+      }
+    }
 
-	return lines
+    if (blockType === "command") {
+      if (typeof block.language !== "string" || block.language.trim().length === 0) {
+        issues.push(`${slug}:${path} missing command language`);
+      }
+      if (!hasStringArray(block.highlightedCommandLines)) {
+        issues.push(`${slug}:${path} missing command highlightedCommandLines`);
+      }
+    }
+
+    if (blockType === "qa" && Array.isArray(block.items)) {
+      for (const [itemIndex, item] of block.items.entries()) {
+        if (typeof item !== "object" || item === null) {
+          issues.push(`${slug}:${path}.items[${itemIndex}] malformed QA item`);
+          continue;
+        }
+        const answer = (item as { answer?: unknown }).answer;
+        if (!Array.isArray(answer)) {
+          issues.push(`${slug}:${path}.items[${itemIndex}] missing QA answer`);
+          continue;
+        }
+        collectSyntaxSnapshotIssues(
+          slug,
+          answer,
+          issues,
+          `${path}.items[${itemIndex}].answer`,
+        );
+      }
+    }
+  }
 }
 
-function renderSectionToString(section: Section, width = 60): string[] {
-	const lines: string[] = []
-	const prefix = section.level === 3 ? "###" : "##"
-	lines.push(`${prefix} ${section.title}`)
-	lines.push("")
-	for (const block of section.content) {
-		lines.push(...renderBlockToString(block, width))
-		lines.push("")
-	}
-	return lines
-}
+describe("cli parsing", () => {
+  it("defaults to interactive mode without flags", () => {
+    expect(parseCliArgs([])).toEqual({ help: false, slug: undefined });
+  });
 
-function renderPageToString(content: DocsContent, width = 60): string[] {
-	const lines: string[] = []
-	lines.push("═".repeat(width))
-	lines.push(content.title)
-	lines.push("═".repeat(width))
-	lines.push("")
-	if (content.intro) {
-		lines.push(inlineToString(content.intro))
-		lines.push("")
-	}
-	for (const section of content.sections) {
-		lines.push(...renderSectionToString(section, width))
-	}
-	return lines
-}
+  it("accepts --slug and short -s", () => {
+    expect(parseCliArgs(["--slug", "getting-started"])).toEqual({
+      help: false,
+      slug: "getting-started",
+    });
+    expect(parseCliArgs(["--slug=installation"])).toEqual({
+      help: false,
+      slug: "installation",
+    });
+    expect(parseCliArgs(["-s", "installation"])).toEqual({
+      help: false,
+      slug: "installation",
+    });
+  });
 
-// ============================================================================
-// Collect all slugs
-// ============================================================================
+  it("rejects removed legacy flags", () => {
+    const legacy = parseCliArgs(["--list"]);
+    expect(legacy.help).toBe(false);
+    expect(legacy.error?.includes("removed")).toBe(true);
 
-const allSlugs: string[] = []
-for (const section of docsNav) {
-	for (const item of section.items) {
-		allSlugs.push(item.href.replace("/docs/", ""))
-	}
-}
+    const legacyWithValue = parseCliArgs(["--page=getting-started"]);
+    expect(legacyWithValue.help).toBe(false);
+    expect(legacyWithValue.error?.includes("removed")).toBe(true);
+  });
 
-// ============================================================================
-// Tests
-// ============================================================================
+  it("rejects malformed slug flag", () => {
+    const missing = parseCliArgs(["--slug"]);
+    expect(missing.error?.includes("requires")).toBe(true);
 
-describe("docs-content package", () => {
-	it("should have docsNav with sections", () => {
-		expect(docsNav).toBeDefined()
-		expect(Array.isArray(docsNav)).toBe(true)
-		expect(docsNav.length).toBeGreaterThan(0)
-	})
+    const missingInline = parseCliArgs(["--slug="]);
+    expect(missingInline.error?.includes("requires")).toBe(true);
+  });
 
-	it("should have contentBySlug with content", () => {
-		expect(contentBySlug).toBeDefined()
-		expect(typeof contentBySlug).toBe("object")
-		expect(Object.keys(contentBySlug).length).toBeGreaterThan(0)
-	})
+  it("renders help text with interactive usage", () => {
+    const help = docsCliHelpText();
+    expect(help.includes("LevitateOS Docs TUI")).toBe(true);
+    expect(help.includes("--slug")).toBe(true);
+    expect(help.includes("Legacy non-interactive flags")).toBe(true);
+  });
+});
 
-	it("should have all nav items in contentBySlug", () => {
-		const missing: string[] = []
-		for (const slug of allSlugs) {
-			if (!contentBySlug[slug]) {
-				missing.push(slug)
-			}
-		}
-		expect(missing).toEqual([])
-	})
-})
+describe("docs rendering via tui-kit", () => {
+  const navItems = flattenDocsNav(docsNav);
 
-describe("page rendering", () => {
-	it.each(allSlugs)("renders page '%s' without error", (slug) => {
-		const content = contentBySlug[slug]
-		expect(content).toBeDefined()
-		expect(content.title).toBeDefined()
-		expect(typeof content.title).toBe("string")
-		expect(content.title.length).toBeGreaterThan(0)
+  it("maps docs navigation into flat slugs", () => {
+    expect(navItems.length).toBeGreaterThan(0);
+    expect(navItems.every((item) => item.slug.length > 0)).toBe(true);
+  });
 
-		// Should not throw
-		const lines = renderPageToString(content)
-		expect(lines.length).toBeGreaterThan(0)
-	})
+  it("all nav slugs resolve to docs content", () => {
+    const missing = navItems
+      .map((item) => item.slug)
+      .filter((slug) => contentBySlug[slug] === undefined);
+    expect(missing).toEqual([]);
+  });
 
-	it.each(allSlugs)("page '%s' has valid sections", (slug) => {
-		const content = contentBySlug[slug]
-		expect(Array.isArray(content.sections)).toBe(true)
+  it("renders every page through tui-kit docs helpers", () => {
+    for (const item of navItems) {
+      const content = contentBySlug[item.slug];
+      expect(content).toBeDefined();
+      if (!content) {
+        continue;
+      }
 
-		for (const section of content.sections) {
-			expect(section.title).toBeDefined()
-			expect(typeof section.title).toBe("string")
-			expect(section.level).toBeOneOf([2, 3, undefined])
-			expect(Array.isArray(section.content)).toBe(true)
-		}
-	})
-})
+      const pageLines = renderDocsPageLines(content, 80);
+      expect(pageLines.length).toBeGreaterThan(0);
 
-describe("block type rendering", () => {
-	// Find pages with specific block types for targeted testing
-	function findBlocksOfType(type: string): { slug: string; block: ContentBlock }[] {
-		const results: { slug: string; block: ContentBlock }[] = []
-		for (const slug of allSlugs) {
-			const content = contentBySlug[slug]
-			for (const section of content.sections) {
-				for (const block of section.content) {
-					if (block.type === type) {
-						results.push({ slug, block })
-					}
-				}
-			}
-		}
-		return results
-	}
+      const header = renderDocsHeader(content, item.slug, 0, pageLines.length, 20, 80);
+      expect(header.length).toBe(3);
+    }
+  });
 
-	it("renders text blocks", () => {
-		const blocks = findBlocksOfType("text")
-		expect(blocks.length).toBeGreaterThan(0)
+  it("ships syntax snapshot payloads for code and command blocks", () => {
+    const issues: string[] = [];
 
-		for (const { block } of blocks) {
-			if (block.type !== "text") continue
-			const lines = renderBlockToString(block)
-			expect(lines.length).toBeGreaterThan(0)
-			expect(lines[0].length).toBeGreaterThan(0)
-		}
-	})
+    for (const [slug, content] of Object.entries(contentBySlug)) {
+      for (const [sectionIndex, section] of content.sections.entries()) {
+        collectSyntaxSnapshotIssues(
+          slug,
+          section.content,
+          issues,
+          `sections[${sectionIndex}].content`,
+        );
+      }
+    }
 
-	it("renders code blocks", () => {
-		const blocks = findBlocksOfType("code")
-		expect(blocks.length).toBeGreaterThan(0)
+    expect(issues).toEqual([]);
+  });
 
-		for (const { block } of blocks) {
-			if (block.type !== "code") continue
-			const lines = renderBlockToString(block)
-			expect(lines.length).toBeGreaterThan(2) // At least box top + content + box bottom
-			expect(lines.some(l => l.startsWith("╭"))).toBe(true)
-			expect(lines.some(l => l.startsWith("╰"))).toBe(true)
-		}
-	})
+  it("renders sidebar with selected marker", () => {
+    const sidebar = renderDocsSidebar(navItems, 1, { maxWidth: 30 });
+    expect(sidebar.includes(">")).toBe(true);
+  });
+});
 
-	it("renders command blocks", () => {
-		const blocks = findBlocksOfType("command")
-		expect(blocks.length).toBeGreaterThan(0)
+describe("initial page selection", () => {
+  const navItems = flattenDocsNav(docsNav);
 
-		for (const { block } of blocks) {
-			if (block.type !== "command") continue
-			const lines = renderBlockToString(block)
-			expect(lines.length).toBeGreaterThan(2)
-			expect(lines.some(l => l.includes("$"))).toBe(true) // Command prefix
-		}
-	})
+  it("starts from requested slug when available", () => {
+    const idx = resolveInitialDocIndex(navItems, navItems[1]?.slug);
+    expect(idx).toBe(1);
+  });
 
-	it("renders list blocks", () => {
-		const blocks = findBlocksOfType("list")
-		expect(blocks.length).toBeGreaterThan(0)
+  it("falls back to first page for unknown slug", () => {
+    expect(resolveInitialDocIndex(navItems, "missing-slug")).toBe(0);
 
-		for (const { block } of blocks) {
-			if (block.type !== "list") continue
-			const lines = renderBlockToString(block)
-			expect(lines.length).toBeGreaterThan(0)
-			// Should have bullet points or numbers
-			expect(lines.some(l => l.startsWith("•") || /^\d+\./.test(l))).toBe(true)
-		}
-	})
+    const selection = resolveInitialDocSelection(navItems, "missing-slug");
+    expect(selection.index).toBe(0);
+    expect(selection.unknownSlug).toBe("missing-slug");
+  });
+});
 
-	it("renders table blocks", () => {
-		const blocks = findBlocksOfType("table")
-		expect(blocks.length).toBeGreaterThan(0)
+describe("viewport calculations", () => {
+  it("clamps oversized scroll while preserving header line ranges", () => {
+    const viewport = computeDocsViewport(
+      {
+        title: "Deep page",
+        intro: "Intro",
+        sections: [
+          {
+            title: "Long section",
+            content: [{ type: "text", content: "alpha ".repeat(500) }],
+          },
+        ],
+      },
+      "deep-page",
+      Number.MAX_SAFE_INTEGER,
+      12,
+      40,
+    );
 
-		for (const { block } of blocks) {
-			if (block.type !== "table") continue
-			const lines = renderBlockToString(block)
-			expect(lines.length).toBeGreaterThan(1) // Header + separator + rows
-			expect(lines.some(l => l.includes("─"))).toBe(true) // Separator
-		}
-	})
+    expect(viewport.maxScroll).toBeGreaterThan(0);
+    expect(viewport.scrollOffset).toBe(viewport.maxScroll);
+    expect(viewport.startLine).toBeLessThanOrEqual(viewport.endLine);
+    expect(viewport.endLine).toBeLessThanOrEqual(viewport.totalLines);
+    expect(viewport.bodyLines.length).toBeLessThanOrEqual(viewport.visibleRows);
+    expect(
+      viewport.headerLines[1]?.includes(
+        `(${viewport.startLine}-${viewport.endLine}/${viewport.totalLines})`,
+      ),
+    ).toBe(true);
+  });
+});
 
-	it("renders interactive blocks", () => {
-		const blocks = findBlocksOfType("interactive")
-		// Interactive blocks may not exist in all docs
-		if (blocks.length === 0) return
-
-		for (const { block } of blocks) {
-			if (block.type !== "interactive") continue
-			const lines = renderBlockToString(block)
-			expect(lines.length).toBeGreaterThan(0)
-		}
-	})
-
-	it("renders conversation blocks", () => {
-		const blocks = findBlocksOfType("conversation")
-		// Conversation blocks may not exist in all docs
-		if (blocks.length === 0) return
-
-		for (const { block } of blocks) {
-			if (block.type !== "conversation") continue
-			const lines = renderBlockToString(block)
-			expect(lines.length).toBeGreaterThan(0)
-			expect(lines.some(l => l.startsWith("You:") || l.startsWith("AI:"))).toBe(true)
-		}
-	})
-
-	it("renders qa blocks", () => {
-		const blocks = findBlocksOfType("qa")
-		// QA blocks may not exist in all docs
-		if (blocks.length === 0) return
-
-		for (const { block } of blocks) {
-			if (block.type !== "qa") continue
-			const lines = renderBlockToString(block)
-			expect(lines.length).toBeGreaterThan(0)
-			expect(lines.some(l => l.startsWith("Q:"))).toBe(true)
-		}
-	})
-})
-
-describe("inline content rendering", () => {
-	it("renders plain strings", () => {
-		expect(inlineToString("hello world")).toBe("hello world")
-	})
-
-	it("renders rich text arrays", () => {
-		const richText: RichText = [
-			"Hello ",
-			{ type: "bold", text: "world" },
-			"!",
-		]
-		expect(inlineToString(richText)).toBe("Hello world!")
-	})
-
-	it("renders code inline", () => {
-		const richText: RichText = [
-			"Run ",
-			{ type: "code", text: "npm install" },
-			" to install",
-		]
-		expect(inlineToString(richText)).toBe("Run npm install to install")
-	})
-
-	it("renders links", () => {
-		const richText: RichText = [
-			"See ",
-			{ type: "link", text: "docs", href: "/docs" },
-		]
-		expect(inlineToString(richText)).toBe("See docs")
-	})
-})
-
-describe("content structure validation", () => {
-	it.each(allSlugs)("page '%s' sections are valid", (slug) => {
-		const content = contentBySlug[slug]
-		for (const section of content.sections) {
-			// Sections may be empty (e.g., subsection headers)
-			expect(Array.isArray(section.content)).toBe(true)
-		}
-	})
-
-	it.each(allSlugs)("page '%s' has valid block types", (slug) => {
-		const content = contentBySlug[slug]
-		const validTypes = ["text", "code", "command", "list", "table", "interactive", "conversation", "qa"]
-
-		for (const section of content.sections) {
-			for (const block of section.content) {
-				expect(validTypes).toContain(block.type)
-			}
-		}
-	})
-
-	it("all pages have unique titles", () => {
-		const titles = allSlugs.map(slug => contentBySlug[slug].title)
-		const uniqueTitles = new Set(titles)
-		expect(uniqueTitles.size).toBe(titles.length)
-	})
-})
-
-describe("specific page content", () => {
-	it("getting-started page has Requirements section", () => {
-		const content = contentBySlug["getting-started"]
-		expect(content).toBeDefined()
-		const sectionTitles = content.sections.map(s => s.title)
-		expect(sectionTitles).toContain("Requirements")
-	})
-
-	it("recipe-format page has Required Variables section", () => {
-		const content = contentBySlug["recipe-format"]
-		expect(content).toBeDefined()
-		const sectionTitles = content.sections.map(s => s.title)
-		expect(sectionTitles).toContain("Required Variables")
-	})
-
-	it("installation page has Overview section", () => {
-		const content = contentBySlug["installation"]
-		expect(content).toBeDefined()
-		const sectionTitles = content.sections.map(s => s.title)
-		expect(sectionTitles).toContain("Overview")
-	})
-
-	it("cli-reference page has content blocks", () => {
-		const content = contentBySlug["cli-reference"]
-		expect(content).toBeDefined()
-
-		// Should have some content blocks (any type)
-		let totalBlocks = 0
-		for (const section of content.sections) {
-			totalBlocks += section.content.length
-		}
-		expect(totalBlocks).toBeGreaterThan(0)
-	})
-})
-
-describe("rendering consistency", () => {
-	it("renders same content consistently", () => {
-		const content = contentBySlug["getting-started"]
-		const lines1 = renderPageToString(content)
-		const lines2 = renderPageToString(content)
-		expect(lines1).toEqual(lines2)
-	})
-
-	it("respects width parameter", () => {
-		const content = contentBySlug["getting-started"]
-		const narrow = renderPageToString(content, 40)
-		const wide = renderPageToString(content, 80)
-
-		// Title separators should be different widths
-		expect(narrow[0].length).toBe(40)
-		expect(wide[0].length).toBe(80)
-	})
-})
+describe("docs theme", () => {
+  it("uses a docs-specific palette and layout", () => {
+    const theme = createDocsTuiTheme();
+    expect(theme.layout.sidebarWidth).toBe(34);
+    expect(theme.layout.minColumns).toBe(90);
+    expect(theme.colors.text.truecolor).toBe("#e6edf3");
+    expect(theme.colors.accent.ansi16).toBe("cyan");
+    expect(theme.colors.warning.ansi256).toBe(221);
+  });
+});

@@ -41,8 +41,8 @@ tmux new-session -d -s "$SESSION_NAME" -x 160 -y 40
 # Split horizontally (left/right) at 50% width
 tmux split-window -h -t "$SESSION_NAME" -p 50
 
-# Right pane: docs TUI in tmux mode
-tmux send-keys -t "$SESSION_NAME:0.1" "cd '$SCRIPT_DIR' && bun src/index.ts --tmux-mode" Enter
+# Right pane: docs TUI
+tmux send-keys -t "$SESSION_NAME:0.1" "cd '$SCRIPT_DIR' && bun src/index.ts" Enter
 
 # Left pane: user's shell (already active)
 # Just make sure it's the active pane
