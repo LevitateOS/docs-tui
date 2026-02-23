@@ -1,0 +1,36 @@
+┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
+│Installation Docs             ││Architecture FAQ  lines 1-31/328                                                      │
+├──────────────────────────────┤├──────────────────────────────────────────────────────────────────────────────────────┤
+│ ▸ Getting Started            ││ Design decisions and rationale behind LevitateOS components. Each answer explains    │
+│                              ││ why we chose a particular approach over alternatives.                                │
+│ ▸ Package Manager            ││                                                                                      │
+│                              ││ ◆ Core Philosophy                                                                    │
+│ ▸ Helpers                    ││                                                                                      │
+│                              ││ Q >                                                                                  │
+│  ▸ Architecture FAQ          ││   What is LevitateOS and why does it exist?                                          │
+│    How We Compare            ││ A >                                                                                  │
+│    Atomic Updates (A/B)      ││   LevitateOS is a daily driver Linux distribution competing directly with Arch       │
+│    Variants                  ││   Linux. It borrows Arch's philosophy (user maintains their own packages, minimal    │
+│                              ││   base that users build up) but substitutes hours of compilation with minutes of     │
+│ ▸ Rec Tooling                ││   extraction from pre-built Rocky Linux packages.                                    │
+│                              ││   Dimension        Arch Linux                   LevitateOS                           │
+│                              ││   ────────────────────────────────────────────────────────────────────────────────── │
+│                              ││   Target User      Power users seeking control  Same                                 │
+│                              ││   Philosophy       Minimal base, user builds    Same                                 │
+│                              ││   Package Manager  pacman + AUR                 recipe (Rhai scripts)                │
+│                              ││   Binary Source    Compiled from source         Extracted from Rocky 10 RPMs         │
+│                              ││   Build Time       Hours (compiling)            Minutes (extracting)                 │
+│                              ││                                                                                      │
+│                              ││ Q >                                                                                  │
+│                              ││   Why not just use Arch?                                                             │
+│                              ││ A >                                                                                  │
+│                              ││   Arch requires compiling AUR packages. That means build dependencies, compiler      │
+│                              ││   toolchains, and waiting. LevitateOS extracts enterprise-tested Rocky RPMs in       │
+│                              ││   minutes. Same philosophy, less waiting.                                            │
+│                              ││   If you want to compile everything yourself, use Arch. If you want the same control │
+│                              ││   without the compilation overhead, use LevitateOS.                                  │
+│                              ││                                                                                      │
+│                              ││ Q >                                                                                  │
+│                              ││   Why not Fedora?                                                                    │
+└──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+ [docs] | q quit | h/l page | ↑/↓ j/k line | [/] section | tab focus-nav | g/G top/end | lines 1-31/328 | page 21/37

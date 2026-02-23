@@ -4,9 +4,9 @@ import type {
 	DocsRenderStyleContext,
 	FlatDocsNavItem,
 } from "../../domain/content/contracts";
-import type { StyledRow } from "../../domain/render-ast/types";
-import { buildDocumentAst } from "./ast-build";
-import { layoutDocumentRows } from "./ast-layout";
+import type { DocRenderItem } from "../../domain/render/types";
+import { buildDocRenderPlan } from "../plan/build-doc-plan";
+import { countRenderPlanLines } from "../plan/line-metrics";
 
 type InitialDocSelection = {
 	index: number;
@@ -14,13 +14,14 @@ type InitialDocSelection = {
 };
 
 export type DocsViewport = {
-	bodyRows: StyledRow[];
-	totalLines: number;
-	visibleRows: number;
+	visibleItems: DocRenderItem[];
+	totalItems: number;
+	visibleCount: number;
 	maxScroll: number;
 	scrollOffset: number;
-	startLine: number;
-	endLine: number;
+	startItem: number;
+	endItem: number;
+	contentWidth: number;
 };
 
 export function resolveInitialDocSelection(
@@ -56,32 +57,31 @@ export function resolveInitialDocIndex(
 
 export function computeDocsViewport(
 	content: DocsContentLike,
-	slug: string,
+	_slug: string,
 	requestedScrollOffset: number,
 	contentInnerRows: number,
 	contentWidth: number,
-	styleContext?: DocsRenderStyleContext,
+	_styleContext?: DocsRenderStyleContext,
 ): DocsViewport {
-	void styleContext;
-	const safeRows = Math.max(1, contentInnerRows);
+	const safeVisibleCount = Math.max(1, contentInnerRows);
 	const safeWidth = Math.max(1, contentWidth);
-	const ast = buildDocumentAst(content, slug);
-	const allBodyRows = layoutDocumentRows(ast, safeWidth);
+	const plan = buildDocRenderPlan(content);
+	const allItems = plan.items;
+	const totalLines = countRenderPlanLines(allItems, safeWidth);
 
-	const visibleRows = safeRows;
-	const maxScroll = Math.max(0, allBodyRows.length - visibleRows);
+	const maxScroll = Math.max(0, totalLines - safeVisibleCount);
 	const scrollOffset = clampNumber(requestedScrollOffset, 0, maxScroll);
-	const startLine = allBodyRows.length === 0 ? 0 : scrollOffset + 1;
-	const endLine =
-		allBodyRows.length === 0 ? 0 : Math.min(allBodyRows.length, scrollOffset + visibleRows);
+	const startItem = totalLines === 0 ? 0 : scrollOffset + 1;
+	const endItem = totalLines === 0 ? 0 : Math.min(totalLines, scrollOffset + safeVisibleCount);
 
 	return {
-		bodyRows: allBodyRows.slice(scrollOffset, scrollOffset + visibleRows),
-		totalLines: allBodyRows.length,
-		visibleRows,
+		visibleItems: allItems,
+		totalItems: totalLines,
+		visibleCount: safeVisibleCount,
 		maxScroll,
 		scrollOffset,
-		startLine,
-		endLine,
+		startItem,
+		endItem,
+		contentWidth: safeWidth,
 	};
 }

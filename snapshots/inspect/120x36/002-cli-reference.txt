@@ -1,0 +1,36 @@
+┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
+│Installation Docs             ││recipe CLI Reference  lines 1-31/316                                                  │
+├──────────────────────────────┤├──────────────────────────────────────────────────────────────────────────────────────┤
+│ ▸ Getting Started            ││ Complete reference for the recipe package manager CLI - a local-first package        │
+│                              ││ manager using Rhai scripts.                                                          │
+│  ▸ recipe CLI Reference      ││                                                                                      │
+│    Recipe Format             ││ ◆ Overview                                                                           │
+│                              ││                                                                                      │
+│ ▸ Helpers                    ││ recipe is the local-first package manager for LevitateOS. It executes Rhai scripts   │
+│                              ││ that define how to acquire, build, and install packages.                             │
+│ ▸ Architecture               ││                                                                                      │
+│                              ││ ╭──────────────────────────────────────────────────────────────────────────────────╮ │
+│ ▸ Rec Tooling                ││ │ INFO                                                                             │ │
+│                              ││ │ Immutable-by-default: on A/B systems, recipe changes are composed into the       │ │
+│                              ││ │ inactive slot (B) and activated on reboot after a trial boot + commit. Mutable   │ │
+│                              ││ │ mode exists as an explicit opt-in for daredevils.                                │ │
+│                              ││ ╰──────────────────────────────────────────────────────────────────────────────────╯ │
+│                              ││                                                                                      │
+│                              ││ CODE BASH                                                                            │
+│                              ││ recipe <command> [options] [arguments]                                               │
+│                              ││                                                                                      │
+│                              ││ ◆ Commands                                                                           │
+│                              ││                                                                                      │
+│                              ││ › install                                                                            │
+│                              ││                                                                                      │
+│                              ││ Install a package by executing its recipe lifecycle:                                 │
+│                              ││                                                                                      │
+│                              ││ CODE BASH                                                                            │
+│                              ││ recipe install <package>                                                             │
+│                              ││ recipe install <package> --deps    # Also install dependencies                       │
+│                              ││ recipe install ./path/to/pkg.rhai  # From local file                                 │
+│                              ││                                                                                      │
+│                              ││ Lifecycle phases:                                                                    │
+│                              ││                                                                                      │
+└──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+ [docs] | q quit | h/l page | ↑/↓ j/k line | [/] section | tab focus-nav | g/G top/end | lines 1-31/316 | page 9/37

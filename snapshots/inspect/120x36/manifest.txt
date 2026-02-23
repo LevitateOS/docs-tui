@@ -1,0 +1,5 @@
+columns=120
+rows=36
+seconds=2
+slugs=installation-disk,cli-reference,faq
+files=001-installation-disk.txt,002-cli-reference.txt,003-faq.txt

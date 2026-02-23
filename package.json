@@ -15,7 +15,8 @@
     "lint:fix": "bunx oxlint --config ../../.oxlintrc.json src --fix",
     "format": "bunx oxfmt --config ../../.oxfmtrc.json --write src package.json tsconfig.json",
     "format:check": "bunx oxfmt --config ../../.oxfmtrc.json --check src package.json tsconfig.json",
-    "check": "bun run typecheck && bun run lint && bun run format:check && bun run test"
+    "inspect:check": "bash scripts/verify-inspect-snapshots.sh",
+    "check": "bun run typecheck && bun run lint && bun run format:check && bun run test && bun run inspect:check"
   },
   "dependencies": {
     "@levitate/docs-content": "workspace:*",

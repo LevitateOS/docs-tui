@@ -20,7 +20,8 @@ export function InstallSidebar({
 	mode = "focus-section",
 }: InstallSidebarProps): ReactNode {
 	const theme = useTuiTheme();
-	const omitActiveSectionHeader = theme.chrome.sidebarHeaderMode === "current-section-title";
+	const omitActiveSectionHeader =
+		mode === "focus-section" && theme.chrome.sidebarHeaderMode === "current-section-title";
 	return (
 		<TreeNav
 			items={items.map((item) => ({
@@ -38,7 +39,7 @@ export function InstallSidebar({
 			collapsedSectionMarker="▸"
 			activeItemMarker="▸"
 			inactiveItemMarker=" "
-			sectionIntent="sidebarSectionText"
+			sectionIntent="sectionHeading"
 			collapsedSectionIntent="dimText"
 			itemIntent="sidebarItemText"
 			activeItemIntent="sidebarItemActiveText"

@@ -2,6 +2,8 @@
 
 Interactive terminal docs viewer for LevitateOS, built on `@levitate/tui-kit`.
 
+Style change map: `style-map.md`
+
 ## Usage
 
 ```bash
@@ -28,4 +30,6 @@ Legacy non-interactive flags (`--list`, `--page`, `--all`) were removed.
 bun install
 bun run typecheck
 bun run test
+bun run inspect:check
+bun run check
 ```

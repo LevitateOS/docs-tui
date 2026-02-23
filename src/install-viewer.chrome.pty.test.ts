@@ -25,7 +25,7 @@ type SegmentInspection = {
 	bottomSegment?: string;
 };
 
-const TITLE_PATTERN = /Installation\s+\d+-\d+\/\d+/;
+const TITLE_PATTERN = /lines\s+\d+-\d+\/\d+/;
 const TOP_LEFT_GLYPHS = new Set(["┌", "╭", "╔", "┏"]);
 const TOP_RIGHT_GLYPHS = new Set(["┐", "╮", "╗", "┓"]);
 const BOTTOM_LEFT_GLYPHS = new Set(["└", "╰", "╚", "┗"]);

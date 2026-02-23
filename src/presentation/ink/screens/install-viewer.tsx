@@ -15,6 +15,7 @@ import { computeDocsViewport } from "../../../rendering/pipeline/viewport";
 import { InstallContentPane } from "../components/content-pane";
 import { InstallSidebar, type SidebarMode } from "../components/sidebar";
 import { installStatusBar } from "../components/status-bar";
+import type { DocsRendererRegistry } from "../document/renderer-registry";
 import { useInstallNavigation } from "../hooks/use-install-navigation";
 
 type InstallViewerScreenProps = {
@@ -22,6 +23,7 @@ type InstallViewerScreenProps = {
 	getContent: (slug: string, title: string) => DocsContentLike;
 	initialSlug?: string;
 	title?: string;
+	renderers: DocsRendererRegistry;
 	onExit?: () => void;
 };
 
@@ -30,6 +32,7 @@ export function InstallViewerScreen({
 	getContent,
 	initialSlug,
 	title = "LevitateOS Field Manual",
+	renderers,
 	onExit,
 }: InstallViewerScreenProps) {
 	const { exit } = useApp();
@@ -37,9 +40,7 @@ export function InstallViewerScreen({
 	const viewport = useTuiViewport();
 	const navigation = useInstallNavigation(navItems, initialSlug);
 	const scroll = useScrollState(0);
-	const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() =>
-		theme.chrome.sidebarHeaderMode === "all-section-headers" ? "all-sections" : "focus-section",
-	);
+	const [sidebarMode, setSidebarMode] = useState<SidebarMode>("focus-section");
 
 	const quit = () => {
 		onExit?.();
@@ -127,6 +128,7 @@ export function InstallViewerScreen({
 	useHotkeys(["pagedown", "space"], () => scrollBy(10));
 	useHotkeys(["tab"], () => {
 		setSidebarMode((previous) => (previous === "focus-section" ? "all-sections" : "focus-section"));
+		navigation.clearStartupNote();
 	});
 	useHotkeys(["g", "home"], () => {
 		scroll.scrollToTop();
@@ -146,8 +148,16 @@ export function InstallViewerScreen({
 			mode={sidebarMode}
 		/>
 	);
-	const footer = installStatusBar(navigation.safeIndex, navItems.length, navigation.startupNote);
-	const contentPaneMeta = `${docsViewport.startLine}-${docsViewport.endLine}/${Math.max(docsViewport.totalLines, 1)}`;
+	const footer = installStatusBar(
+		navigation.safeIndex,
+		navItems.length,
+		sidebarMode,
+		docsViewport.startItem,
+		docsViewport.endItem,
+		docsViewport.totalItems,
+		navigation.startupNote,
+	);
+	const contentPaneMeta = `lines ${docsViewport.startItem}-${docsViewport.endItem}/${Math.max(docsViewport.totalItems, 1)}`;
 	const contentPaneTitle = truncateLine(
 		`${currentItem.title}  ${contentPaneMeta}`,
 		Math.max(1, geometry.rightTextColumns),
@@ -171,7 +181,7 @@ export function InstallViewerScreen({
 			rightPane={{
 				title: contentPaneTitle,
 				titleMode: "inline",
-				body: <InstallContentPane viewport={docsViewport} />,
+				body: <InstallContentPane viewport={docsViewport} renderers={renderers} />,
 				borderIntent: "cardBorder",
 				backgroundIntent: "contentBackground",
 				textIntent: "text",

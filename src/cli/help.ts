@@ -12,7 +12,7 @@ Navigation:
   q / Esc / Ctrl-C  Quit
   h / l             Previous / next page
   [ / ]             Previous / next section
-  j / k             Scroll page
+  j / k             Scroll item
   PgUp / PgDn       Fast scroll
   Tab               Toggle sidebar mode
   g / G             Top / bottom

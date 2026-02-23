@@ -1,9 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { contentBySlug, docsNav, metaBySlug } from "@levitate/docs-content";
+import type { CodeBlock, CommandBlock, DocsContent } from "@levitate/docs-content";
 import { createInstallSession } from "./app/session";
 import { installDocsCliHelpText } from "./cli/help";
 import { parseCliArgs } from "./cli/parse-args";
 import { getDistroProfile } from "./domain/distro/registry";
+import type { DocRenderItem } from "./domain/render/types";
 import {
 	buildNavSectionSpans,
 	findSectionIndexForPageIndex,
@@ -11,9 +13,15 @@ import {
 	jumpToSectionStart,
 } from "./domain/navigation/nav-model";
 import { resolveAllowedSlugs } from "./domain/scope/allowed-slugs";
+import {
+	codeSnapshotLines,
+	commandSnapshotLines,
+} from "./presentation/ink/blocks/shared/content-utils";
+import { syntaxTokenColors } from "./presentation/ink/blocks/shared/syntax-line";
+import { inlineContentToPlainText } from "./presentation/ink/blocks/shared/rich-text-renderer";
 import { createInstallDocsTheme } from "./presentation/ink/theme";
-import { buildDocumentAst } from "./rendering/pipeline/ast-build";
-import { layoutDocumentRows } from "./rendering/pipeline/ast-layout";
+import { buildDocRenderPlan } from "./rendering/plan/build-doc-plan";
+import { countRenderPlanLines } from "./rendering/plan/line-metrics";
 import {
 	computeDocsViewport,
 	resolveInitialDocIndex,
@@ -24,11 +32,11 @@ function hasStringArray(value: unknown): value is string[] {
 	return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
-function rowToText(row: { runs: Array<{ text: string }> } | undefined): string {
-	if (!row) {
-		return "";
+function renderItemBlockType(item: DocRenderItem): string | undefined {
+	if (item.kind !== "block") {
+		return undefined;
 	}
-	return row.runs.map((run) => run.text).join("");
+	return item.block.type;
 }
 
 function collectSyntaxSnapshotIssues(
@@ -204,12 +212,11 @@ describe("rendering and viewport", () => {
 				continue;
 			}
 
-			const ast = buildDocumentAst(content, item.slug);
-			expect(ast.sections.length).toBeGreaterThan(0);
-
-			const rows = layoutDocumentRows(ast, 80);
-			expect(rows.length).toBeGreaterThan(0);
-			expect(rows.some((row) => row.kind === "heading")).toBe(true);
+			expect(content.sections.length).toBeGreaterThan(0);
+			const plan = buildDocRenderPlan(content);
+			expect(plan.items.length).toBeGreaterThan(0);
+			expect(plan.items.some((renderItem) => renderItem.kind === "section")).toBe(true);
+			expect(plan.items.some((renderItem) => renderItem.kind === "block")).toBe(true);
 		}
 	});
 
@@ -235,168 +242,129 @@ describe("rendering and viewport", () => {
 		expect(issues).toEqual([]);
 	});
 
-	it("avoids decorative separator rules in layout rows", () => {
-		const content = contentBySlug[navItems[0]?.slug ?? ""];
-		expect(content).toBeDefined();
-		if (!content) {
-			return;
-		}
-		const ast = buildDocumentAst(content, navItems[0]?.slug ?? "page");
-		const rows = layoutDocumentRows(ast, 80);
-		const text = rows.map((row) => rowToText(row)).join("\n");
-
-		expect(text.includes("-----")).toBe(false);
-		expect(text.includes("=====")).toBe(false);
+	it("builds intro, section heading, and block items in order", () => {
+		const content: DocsContent = {
+			title: "Ordered page",
+			meta: {
+				product: "levitate",
+				scopes: ["install"],
+			},
+			intro: "Welcome",
+			sections: [
+				{
+					title: "First",
+					content: [
+						{
+							type: "text",
+							content: "alpha",
+						},
+					],
+				},
+				{
+					title: "Second",
+					content: [
+						{
+							type: "text",
+							content: "beta",
+						},
+					],
+				},
+			],
+		};
+		const plan = buildDocRenderPlan(content);
+		expect(plan.items.map((item) => item.kind)).toEqual([
+			"intro",
+			"section",
+			"block",
+			"section",
+			"block",
+		]);
 	});
 
-	it("applies rich row styling intents for structured blocks", () => {
-		const ast = buildDocumentAst(
-			{
-				title: "Styled page",
-				meta: {
-					product: "levitate",
-					scopes: ["install"],
-				},
-				sections: [
-					{
-						title: "Styles",
-						content: [
-							{
-								type: "code",
-								language: "bash",
-								content: "echo hi",
-								highlightedLines: ["echo hi"],
-							},
-							{
-								type: "command",
-								language: "bash",
-								description: "Run the command",
-								command: "echo hi",
-								highlightedCommandLines: ["echo hi"],
-								output: "hi",
-							},
-							{
-								type: "table",
-								headers: ["name", "value"],
-								rows: [["a", "1"]],
-							},
-							{
-								type: "note",
-								variant: "warning",
-								content: "careful",
-							},
-						],
-					},
-				],
+	it("tracks structured docs blocks as first-class render items", () => {
+		const content: DocsContent = {
+			title: "Structured blocks",
+			meta: {
+				product: "levitate",
+				scopes: ["install"],
 			},
-			"styled-page",
-		);
-		const rows = layoutDocumentRows(ast, 80);
-
-		expect(
-			rows.some(
-				(row) =>
-					row.kind === "code" && row.runs.some((run) => run.backgroundIntent === "cardBackground"),
-			),
-		).toBe(true);
-		expect(
-			rows.some(
-				(row) =>
-					row.kind === "command" &&
-					row.runs.some((run) => run.backgroundIntent === "commandBarBackground"),
-			),
-		).toBe(true);
-		expect(
-			rows.some(
-				(row) =>
-					row.kind === "table" && row.runs.some((run) => run.backgroundIntent === "cardBackground"),
-			),
-		).toBe(true);
-		expect(
-			rows.some((row) => row.kind === "note" && row.runs.some((run) => run.backgroundIntent)),
-		).toBe(true);
+			sections: [
+				{
+					title: "Styles",
+					content: [
+						{
+							type: "code",
+							language: "bash",
+							content: "echo hi",
+							highlightedLines: ["echo hi"],
+						},
+						{
+							type: "command",
+							language: "bash",
+							description: "Run the command",
+							command: "echo hi",
+							highlightedCommandLines: ["echo hi"],
+							output: "hi",
+						},
+						{
+							type: "table",
+							headers: ["name", "value"],
+							rows: [["a", "1"]],
+						},
+						{
+							type: "note",
+							variant: "warning",
+							content: "careful",
+						},
+					],
+				},
+			],
+		};
+		const plan = buildDocRenderPlan(content);
+		const blockTypes = plan.items.flatMap((item) => {
+			const blockType = renderItemBlockType(item);
+			return typeof blockType === "string" ? [blockType] : [];
+		});
+		expect(blockTypes).toEqual(["code", "command", "table", "note"]);
 	});
 
 	it("preserves syntax snapshot colors for code and command lines", () => {
-		const ast = buildDocumentAst(
-			{
-				title: "Syntax colors",
-				meta: {
-					product: "levitate",
-					scopes: ["install"],
-				},
-				sections: [
-					{
-						title: "Syntax",
-						content: [
-							{
-								type: "code",
-								language: "bash",
-								content: "echo hi",
-								highlightedLines: ["[[fg=#b392f0]]echo[[/]][[fg=#e1e4e8]] hi[[/]]"],
-							},
-							{
-								type: "command",
-								language: "bash",
-								description: "Run",
-								command: "echo hi",
-								highlightedCommandLines: ["[[fg=#b392f0]]echo[[/]][[fg=#e1e4e8]] hi[[/]]"],
-								output: "",
-							},
-						],
-					},
-				],
-			},
-			"syntax-colors",
-		);
-		const rows = layoutDocumentRows(ast, 80);
+		const syntaxLine = "[[fg=#b392f0]]echo[[/]][[fg=#e1e4e8]] hi[[/]]";
+		const codeBlock: CodeBlock = {
+			type: "code",
+			language: "bash",
+			content: "echo hi",
+			highlightedLines: [syntaxLine],
+		};
+		const commandBlock: CommandBlock = {
+			type: "command",
+			language: "bash",
+			description: "Run",
+			command: "echo hi",
+			highlightedCommandLines: [syntaxLine],
+			output: "",
+		};
+		const literalColors = [
+			...syntaxTokenColors(codeSnapshotLines(codeBlock)[0] ?? ""),
+			...syntaxTokenColors(commandSnapshotLines(commandBlock)[0] ?? ""),
+		];
 
-		expect(
-			rows.some((row) =>
-				row.runs.some((run) => run.literalColor === "#b392f0" || run.literalColor === "#e1e4e8"),
-			),
-		).toBe(true);
+		expect(literalColors.includes("#b392f0")).toBe(true);
+		expect(literalColors.includes("#e1e4e8")).toBe(true);
 	});
 
-	it("preserves syntax snapshot colors after wrapped line splits", () => {
-		const ast = buildDocumentAst(
-			{
-				title: "Syntax wrap colors",
-				meta: {
-					product: "levitate",
-					scopes: ["install"],
-				},
-				sections: [
-					{
-						title: "Wrapped syntax",
-						content: [
-							{
-								type: "code",
-								language: "bash",
-								content: "echo hithere",
-								highlightedLines: ["[[fg=#b392f0]]echo[[/]][[fg=#e1e4e8]] hithere[[/]]"],
-							},
-							{
-								type: "command",
-								language: "bash",
-								description: "Run",
-								command: "echo hithere",
-								highlightedCommandLines: ["[[fg=#b392f0]]echo[[/]][[fg=#e1e4e8]] hithere[[/]]"],
-								output: "",
-							},
-						],
-					},
-				],
-			},
-			"syntax-wrap-colors",
-		);
-		const rows = layoutDocumentRows(ast, 8);
-		const codeLiteralColors = rows
-			.filter((row) => row.kind === "code")
-			.flatMap((row) => row.runs.map((run) => run.literalColor));
-		const commandLiteralColors = rows
-			.filter((row) => row.kind === "command")
-			.flatMap((row) => row.runs.map((run) => run.literalColor));
+	it("preserves syntax snapshot colors for longer command/content lines", () => {
+		const syntaxLine = "[[fg=#b392f0]]echo[[/]][[fg=#e1e4e8]] hithere[[/]]";
+		const commandBlock: CommandBlock = {
+			type: "command",
+			language: "bash",
+			description: "Run",
+			command: "echo hithere",
+			highlightedCommandLines: [syntaxLine],
+			output: "",
+		};
+		const codeLiteralColors = syntaxTokenColors(syntaxLine);
+		const commandLiteralColors = syntaxTokenColors(commandSnapshotLines(commandBlock)[0] ?? "");
 
 		expect(codeLiteralColors.includes("#b392f0")).toBe(true);
 		expect(codeLiteralColors.includes("#e1e4e8")).toBe(true);
@@ -405,75 +373,29 @@ describe("rendering and viewport", () => {
 	});
 
 	it("preserves link destinations in rendered inline content", () => {
-		const ast = buildDocumentAst(
+		const text = inlineContentToPlainText([
+			"See ",
 			{
-				title: "Links",
-				meta: {
-					product: "levitate",
-					scopes: ["install"],
-				},
-				sections: [
-					{
-						title: "Read",
-						content: [
-							{
-								type: "text",
-								content: [
-									"See ",
-									{
-										type: "link",
-										text: "guide",
-										href: "https://example.com/guide",
-									},
-								],
-							},
-						],
-					},
-				],
+				type: "link",
+				text: "guide",
+				href: "https://example.com/guide",
 			},
-			"links-page",
-		);
-		const text = layoutDocumentRows(ast, 80)
-			.map((row) => rowToText(row))
-			.join("\n");
-
+		]);
 		expect(text.includes("guide (https://example.com/guide)")).toBe(true);
 	});
 
 	it("wraps long command lines without dropping content", () => {
-		const ast = buildDocumentAst(
-			{
-				title: "Commands",
-				meta: {
-					product: "levitate",
-					scopes: ["install"],
-				},
-				sections: [
-					{
-						title: "Wrap",
-						content: [
-							{
-								type: "command",
-								language: "bash",
-								description: "Run this:",
-								command: "recstrap /mnt --variant full --with networking --with docs --with debug",
-								highlightedCommandLines: [
-									"recstrap /mnt --variant full --with networking --with docs --with debug",
-								],
-								output: "",
-							},
-						],
-					},
-				],
-			},
-			"command-wrap",
-		);
-		const rows = layoutDocumentRows(ast, 24);
-		const commandText = rows
-			.filter((row) => row.kind === "command")
-			.map((row) => rowToText(row))
-			.join("");
-
+		const commandBlock: CommandBlock = {
+			type: "command",
+			language: "bash",
+			description: "Run this:",
+			command: "recstrap /mnt --variant full --with networking --with docs --with debug",
+			highlightedCommandLines: [
+				"recstrap /mnt --variant full --with networking --with docs --with debug",
+			],
+			output: "",
+		};
+		const commandText = commandSnapshotLines(commandBlock).join("\n");
 		expect(commandText.includes("--with debug")).toBe(true);
 	});
 
@@ -486,7 +408,11 @@ describe("rendering and viewport", () => {
 		expect(selection.unknownSlug).toBe("missing-slug");
 	});
 
-	it("clamps oversized scroll while preserving line ranges", () => {
+	it("clamps oversized scroll while preserving viewport line ranges", () => {
+		const sections = Array.from({ length: 16 }, (_, index) => ({
+			title: `Section ${index + 1}`,
+			content: [{ type: "text" as const, content: `alpha ${index}` }],
+		}));
 		const viewport = computeDocsViewport(
 			{
 				title: "Deep page",
@@ -495,12 +421,7 @@ describe("rendering and viewport", () => {
 					scopes: ["install"],
 				},
 				intro: "Intro",
-				sections: [
-					{
-						title: "Long section",
-						content: [{ type: "text", content: "alpha ".repeat(500) }],
-					},
-				],
+				sections,
 			},
 			"deep-page",
 			Number.MAX_SAFE_INTEGER,
@@ -510,24 +431,132 @@ describe("rendering and viewport", () => {
 
 		expect(viewport.maxScroll).toBeGreaterThan(0);
 		expect(viewport.scrollOffset).toBe(viewport.maxScroll);
-		expect(viewport.startLine).toBeLessThanOrEqual(viewport.endLine);
-		expect(viewport.endLine).toBeLessThanOrEqual(viewport.totalLines);
-		expect(viewport.bodyRows.length).toBeLessThanOrEqual(viewport.visibleRows);
+		expect(viewport.startItem).toBeLessThanOrEqual(viewport.endItem);
+		expect(viewport.endItem).toBeLessThanOrEqual(viewport.totalItems);
+		expect(viewport.visibleItems.length).toBeGreaterThan(0);
+	});
+
+	it("allows scrolling long single-block pages by rendered line count", () => {
+		const viewport = computeDocsViewport(
+			{
+				title: "Single long block",
+				meta: {
+					product: "levitate",
+					scopes: ["install"],
+				},
+				sections: [
+					{
+						title: "Long text",
+						content: [{ type: "text", content: "alpha ".repeat(300) }],
+					},
+				],
+			},
+			"single-long-block",
+			Number.MAX_SAFE_INTEGER,
+			8,
+			24,
+		);
+
+		expect(viewport.maxScroll).toBeGreaterThan(0);
+		expect(viewport.scrollOffset).toBe(viewport.maxScroll);
+		expect(viewport.visibleItems.length).toBe(2);
+		expect(viewport.startItem).toBeGreaterThan(1);
+		expect(viewport.endItem).toBe(viewport.totalItems);
+	});
+
+	it("keeps scroll parity for mixed rich-text blocks", () => {
+		const content: DocsContent = {
+			title: "Mixed rich text parity",
+			meta: {
+				product: "levitate",
+				scopes: ["install"],
+			},
+			intro: [
+				"Use ",
+				{ type: "link", text: "Getting Started", href: "/docs/getting-started" },
+				" before installation.",
+			],
+			sections: [
+				{
+					title: "Mixed",
+					content: [
+						{
+							type: "text",
+							content:
+								"This paragraph is intentionally long so wrapped content spans multiple lines and stresses viewport math.",
+						},
+						{
+							type: "list",
+							items: [
+								[
+									"First item with ",
+									{ type: "code", text: "recpart" },
+									" and a ",
+									{ type: "link", text: "reference", href: "/docs/cli-reference" },
+									".",
+								],
+								"Second item with enough width pressure to wrap repeatedly across narrow viewports.",
+							],
+						},
+						{
+							type: "note",
+							variant: "warning",
+							content:
+								"Labels must match exactly. Slot A boots from system-a and Slot B boots from system-b.",
+						},
+						{
+							type: "command",
+							language: "bash",
+							description: "Run and verify output.",
+							command: "echo alpha && echo beta",
+							highlightedCommandLines: ["echo alpha && echo beta"],
+							output: "alpha\nbeta",
+						},
+					],
+				},
+			],
+		};
+
+		const width = 54;
+		const visibleRows = 9;
+		const plan = buildDocRenderPlan(content);
+		const expectedTotalLines = countRenderPlanLines(plan.items, width);
+		const top = computeDocsViewport(content, "mixed", 0, visibleRows, width);
+		expect(top.totalItems).toBe(expectedTotalLines);
+		expect(top.maxScroll).toBe(Math.max(0, expectedTotalLines - visibleRows));
+		expect(top.maxScroll).toBeGreaterThan(0);
+		expect(top.startItem).toBe(1);
+		expect(top.endItem).toBe(Math.min(expectedTotalLines, visibleRows));
+
+		const mid = computeDocsViewport(content, "mixed", 3, visibleRows, width);
+		expect(mid.startItem).toBe(4);
+		expect(mid.endItem).toBe(Math.min(expectedTotalLines, 12));
+
+		const bottom = computeDocsViewport(
+			content,
+			"mixed",
+			Number.MAX_SAFE_INTEGER,
+			visibleRows,
+			width,
+		);
+		expect(bottom.scrollOffset).toBe(top.maxScroll);
+		expect(bottom.startItem).toBe(top.maxScroll + 1);
+		expect(bottom.endItem).toBe(expectedTotalLines);
 	});
 });
 
 describe("theme", () => {
 	it("uses install-docs palette and layout", () => {
 		const theme = createInstallDocsTheme();
-		expect(theme.layout.sidebarWidth).toBe(30);
+		expect(theme.layout.sidebarWidth).toBe(32);
 		expect(theme.layout.minColumns).toBe(88);
 		expect(theme.layout.headerHeight).toBe(1);
-		expect(theme.colors.text.truecolor).toBe("#e5e7eb");
-		expect(theme.colors.accent.truecolor).toBe("#facc15");
-		expect(theme.colors.warning.truecolor).toBe("#facc15");
+		expect(theme.colors.text.truecolor).toBe("#ceffbb");
+		expect(theme.colors.accent.truecolor).toBe("#f5ca6c");
+		expect(theme.colors.warning.truecolor).toBe("#f5ca6c");
 		expect(theme.chrome.titleStyle).toBe("slot");
 		expect(theme.chrome.framePaneGap).toBe(0);
-		expect(theme.chrome.sidebarHeaderMode).toBe("all-section-headers");
+		expect(theme.chrome.sidebarHeaderMode).toBe("current-section-title");
 	});
 });
 
