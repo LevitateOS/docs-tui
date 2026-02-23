@@ -1,5 +1,5 @@
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
-│Installation Docs             ││Architecture FAQ  lines 1-31/328                                                      │
+│Installation Docs             ││Architecture FAQ  lines 1-31/337                                                      │
 ├──────────────────────────────┤├──────────────────────────────────────────────────────────────────────────────────────┤
 │ ▸ Getting Started            ││ Design decisions and rationale behind LevitateOS components. Each answer explains    │
 │                              ││ why we chose a particular approach over alternatives.                                │
@@ -7,13 +7,13 @@
 │                              ││ ◆ Core Philosophy                                                                    │
 │ ▸ Helpers                    ││                                                                                      │
 │                              ││ Q >                                                                                  │
-│  ▸ Architecture FAQ          ││   What is LevitateOS and why does it exist?                                          │
-│    How We Compare            ││ A >                                                                                  │
-│    Atomic Updates (A/B)      ││   LevitateOS is a daily driver Linux distribution competing directly with Arch       │
-│    Variants                  ││   Linux. It borrows Arch's philosophy (user maintains their own packages, minimal    │
-│                              ││   base that users build up) but substitutes hours of compilation with minutes of     │
-│ ▸ Rec Tooling                ││   extraction from pre-built Rocky Linux packages.                                    │
-│                              ││   Dimension        Arch Linux                   LevitateOS                           │
+│ ▾ Architecture               ││   What is LevitateOS and why does it exist?                                          │
+│  ▸ Architecture FAQ          ││ A >                                                                                  │
+│    How We Compare            ││   LevitateOS is a daily driver Linux distribution competing directly with Arch       │
+│    Atomic Updates (A/B)      ││   Linux. It borrows Arch's philosophy (user maintains their own packages, minimal    │
+│    Variants                  ││   base that users build up) but substitutes hours of compilation with minutes of     │
+│                              ││   extraction from pre-built Rocky Linux packages.                                    │
+│ ▸ Rec Tooling                ││   Dimension        Arch Linux                   LevitateOS                           │
 │                              ││   ────────────────────────────────────────────────────────────────────────────────── │
 │                              ││   Target User      Power users seeking control  Same                                 │
 │                              ││   Philosophy       Minimal base, user builds    Same                                 │
@@ -33,4 +33,4 @@
 │                              ││ Q >                                                                                  │
 │                              ││   Why not Fedora?                                                                    │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
- [docs] | q quit | h/l page | ↑/↓ j/k line | [/] section | tab focus-nav | g/G top/end | lines 1-31/328 | page 21/37
+ [docs] | q quit | h/l page | ↑/↓ j/k line | [/] section | tab focus-nav | g/G top/end | lines 1-31/337 | page 21/37

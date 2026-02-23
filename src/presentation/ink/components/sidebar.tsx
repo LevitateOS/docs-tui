@@ -1,4 +1,4 @@
-import { TreeNav, useTuiTheme } from "@levitate/tui-kit";
+import { TreeNav } from "@levitate/tui-kit";
 import type { ReactNode } from "react";
 import type { FlatDocsNavItem } from "../../../domain/content/contracts";
 
@@ -19,9 +19,6 @@ export function InstallSidebar({
 	currentSection,
 	mode = "focus-section",
 }: InstallSidebarProps): ReactNode {
-	const theme = useTuiTheme();
-	const omitActiveSectionHeader =
-		mode === "focus-section" && theme.chrome.sidebarHeaderMode === "current-section-title";
 	return (
 		<TreeNav
 			items={items.map((item) => ({
@@ -33,7 +30,6 @@ export function InstallSidebar({
 			maxWidth={maxWidth}
 			currentSection={currentSection}
 			mode={mode}
-			hideActiveSectionHeader={omitActiveSectionHeader}
 			emptyLabel="(no docs pages)"
 			expandedSectionMarker="▾"
 			collapsedSectionMarker="▸"
@@ -43,6 +39,7 @@ export function InstallSidebar({
 			collapsedSectionIntent="dimText"
 			itemIntent="sidebarItemText"
 			activeItemIntent="sidebarItemActiveText"
+			activeBackgroundIntent="sidebarItemActiveBackground"
 		/>
 	);
 }

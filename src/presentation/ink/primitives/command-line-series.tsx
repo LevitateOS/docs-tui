@@ -5,6 +5,7 @@ import { CommandLineRow } from "./command-line-row";
 type CommandLineSeriesProps = {
 	lines: ReadonlyArray<string>;
 	width: number;
+	startRowIndex?: number;
 	firstPrefix?: string;
 	continuationPrefix?: string;
 	bold?: boolean;
@@ -13,6 +14,7 @@ type CommandLineSeriesProps = {
 export function CommandLineSeries({
 	lines,
 	width,
+	startRowIndex = 0,
 	firstPrefix = "$ ",
 	continuationPrefix = "  ",
 	bold = true,
@@ -21,8 +23,9 @@ export function CommandLineSeries({
 		<Box flexDirection="column">
 			{lines.map((line, index) => (
 				<CommandLineRow
-					key={`command-series-${index}`}
+					key={`command-series-${startRowIndex + index}`}
 					line={line}
+					rowIndex={startRowIndex + index}
 					prefix={index === 0 ? firstPrefix : continuationPrefix}
 					width={width}
 					bold={bold}

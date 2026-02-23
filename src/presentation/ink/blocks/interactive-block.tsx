@@ -30,7 +30,12 @@ export function InteractiveBlockView({
 			))}
 			{block.steps.map((step, stepIndex) => (
 				<Box key={`interactive-step-${stepIndex}`} flexDirection="column">
-					<CommandLineSeries lines={[step.command]} width={interactiveWidth} bold />
+					<CommandLineSeries
+						lines={[step.command]}
+						width={interactiveWidth}
+						startRowIndex={stepIndex}
+						bold
+					/>
 					{wrapRichTextRuns(step.description, interactiveWidth, "text", 1).map(
 						(lineRuns, lineIndex) => (
 							<RichTextLine

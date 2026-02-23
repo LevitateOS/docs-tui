@@ -551,9 +551,9 @@ describe("theme", () => {
 		expect(theme.layout.sidebarWidth).toBe(32);
 		expect(theme.layout.minColumns).toBe(88);
 		expect(theme.layout.headerHeight).toBe(1);
-		expect(theme.colors.text.truecolor).toBe("#d4d4d4");
-		expect(theme.colors.accent.truecolor).toBe("#d4d4d4");
-		expect(theme.colors.warning.truecolor).toBe("#d4d4d4");
+		expect(theme.colors.text.truecolor).toBe("#eceaf4");
+		expect(theme.colors.accent.truecolor).toBe("#7db3ff");
+		expect(theme.colors.warning.truecolor).toBe("#ffc76a");
 		expect(theme.chrome.titleStyle).toBe("slot");
 		expect(theme.chrome.framePaneGap).toBe(0);
 		expect(theme.chrome.sidebarHeaderMode).toBe("current-section-title");

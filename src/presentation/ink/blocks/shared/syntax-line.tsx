@@ -83,7 +83,7 @@ export function SyntaxLine({
 			{paddedTokens.map((token, index) => (
 				<Text
 					key={`${index}-${token.text}`}
-					color={fallbackColor}
+					color={token.color ?? fallbackColor}
 					backgroundColor={resolvedBackgroundColor}
 				>
 					{token.text.length > 0 ? token.text : " "}
