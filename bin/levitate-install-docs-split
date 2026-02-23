@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# levitate-docs-split - Split-screen docs TUI launcher with tmux
+# levitate-install-docs-split - Split-screen install docs TUI launcher with tmux
 #
 # Creates a tmux session with:
 #   LEFT PANE: Interactive shell
@@ -21,12 +21,12 @@ Install tmux using your package manager:
   macOS:           brew install tmux
 
 Or run in full-screen mode:
-  bun src/index.ts
+  bun src/main.ts
 EOF
     exit 1
 fi
 
-SESSION_NAME="levitate-docs"
+SESSION_NAME="levitate-install-docs"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Check if session already exists
@@ -35,14 +35,14 @@ if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     exec tmux attach-session -t "$SESSION_NAME"
 fi
 
-# Create new tmux session in detached mode
-tmux new-session -d -s "$SESSION_NAME" -x 160 -y 40
+# Create a detached session and let tmux/client geometry drive sizing.
+tmux new-session -d -s "$SESSION_NAME"
 
 # Split horizontally (left/right) at 50% width
 tmux split-window -h -t "$SESSION_NAME" -p 50
 
 # Right pane: docs TUI
-tmux send-keys -t "$SESSION_NAME:0.1" "cd '$SCRIPT_DIR' && bun src/index.ts" Enter
+tmux send-keys -t "$SESSION_NAME:0.1" "cd '$SCRIPT_DIR' && bun src/main.ts" Enter
 
 # Left pane: user's shell (already active)
 # Just make sure it's the active pane

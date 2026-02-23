@@ -5,9 +5,12 @@ Interactive terminal docs viewer for LevitateOS, built on `@levitate/tui-kit`.
 ## Usage
 
 ```bash
-bun src/index.ts
-bun src/index.ts --slug getting-started
+bun src/main.ts
+bun src/main.ts --slug installation
+bun run split
 ```
+
+CLI binary name: `levitate-install-docs`
 
 Legacy non-interactive flags (`--list`, `--page`, `--all`) were removed.
 

@@ -4,20 +4,28 @@
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "bin": {
-    "levitate-docs": "./src/index.ts"
+    "levitate-install-docs": "./src/main.ts"
   },
   "scripts": {
-    "dev": "bun src/index.ts",
-    "split": "bash bin/levitate-docs-split",
+    "dev": "bun src/main.ts",
+    "split": "bash bin/levitate-install-docs-split",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "bunx oxlint --config ../../.oxlintrc.json src --deny-warnings",
+    "lint:fix": "bunx oxlint --config ../../.oxlintrc.json src --fix",
+    "format": "bunx oxfmt --config ../../.oxfmtrc.json --write src package.json tsconfig.json",
+    "format:check": "bunx oxfmt --config ../../.oxfmtrc.json --check src package.json tsconfig.json",
+    "check": "bun run typecheck && bun run lint && bun run format:check && bun run test"
   },
   "dependencies": {
     "@levitate/docs-content": "workspace:*",
-    "@levitate/tui-kit": "file:../../shared/tui-kit"
+    "@levitate/tui-kit": "file:../../shared/tui-kit",
+    "ink": "^6.8.0",
+    "react": "^19.2.0"
   },
   "devDependencies": {
     "@types/bun": "^1.2.17",
+    "@types/react": "^19.2.0",
     "typescript": "^5.7.2"
   }
 }
