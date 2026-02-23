@@ -43,7 +43,6 @@ export function InstallSidebar({
 			collapsedSectionIntent="dimText"
 			itemIntent="sidebarItemText"
 			activeItemIntent="sidebarItemActiveText"
-			activeBackgroundIntent="sidebarItemActiveBackground"
 		/>
 	);
 }

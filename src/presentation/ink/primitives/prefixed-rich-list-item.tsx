@@ -35,7 +35,7 @@ export function PrefixedRichListItem({
 
 	return (
 		<Box flexDirection="row" width={safeWidth}>
-			<Text color={markerIntent} backgroundColor={backgroundIntent} bold={markerBold}>
+			<Text color={markerIntent} bold={markerBold}>
 				{prefix}
 			</Text>
 			<Box flexDirection="column" width={textWidth}>

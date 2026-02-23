@@ -60,7 +60,6 @@ export function InstallViewerScreen({
 					titleMode: "inline",
 					body: "(no docs pages)",
 					borderIntent: "sidebarBorder",
-					backgroundIntent: "sidebarBackground",
 					textIntent: "sidebarItemText",
 					titleIntent: "sidebarSectionText",
 				}}
@@ -69,7 +68,6 @@ export function InstallViewerScreen({
 					titleMode: "inline",
 					body: <UiText>No docs pages are available.</UiText>,
 					borderIntent: "cardBorder",
-					backgroundIntent: "contentBackground",
 					textIntent: "text",
 					titleIntent: "sectionHeading",
 				}}
@@ -174,7 +172,6 @@ export function InstallViewerScreen({
 				titleMode: "inline",
 				body: sidebar,
 				borderIntent: "sidebarBorder",
-				backgroundIntent: "sidebarBackground",
 				textIntent: "sidebarItemText",
 				titleIntent: "sidebarSectionText",
 			}}
@@ -183,7 +180,6 @@ export function InstallViewerScreen({
 				titleMode: "inline",
 				body: <InstallContentPane viewport={docsViewport} renderers={renderers} />,
 				borderIntent: "cardBorder",
-				backgroundIntent: "contentBackground",
 				textIntent: "text",
 				titleIntent: "sectionHeading",
 			}}
