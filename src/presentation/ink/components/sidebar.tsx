@@ -37,7 +37,7 @@ export function InstallSidebar({
 			expandedSectionMarker="▾"
 			collapsedSectionMarker="▸"
 			activeItemMarker="▸"
-			inactiveItemMarker="•"
+			inactiveItemMarker=" "
 			sectionIntent="sidebarSectionText"
 			collapsedSectionIntent="dimText"
 			itemIntent="sidebarItemText"

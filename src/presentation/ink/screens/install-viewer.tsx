@@ -1,7 +1,6 @@
-import { Box, useApp } from "ink";
+import { useApp } from "ink";
 import { useState } from "react";
 import {
-	Panel,
 	SurfaceFrame,
 	UiText,
 	resolveSurfaceFrameGeometry,
@@ -56,22 +55,22 @@ export function InstallViewerScreen({
 				leftWidth={theme.layout.sidebarWidth}
 				showHeader={false}
 				leftPane={{
-					title: "Navigation",
+					title: "Installation Docs",
+					titleMode: "inline",
 					body: "(no docs pages)",
 					borderIntent: "sidebarBorder",
 					backgroundIntent: "sidebarBackground",
 					textIntent: "sidebarItemText",
 					titleIntent: "sidebarSectionText",
-					titleMode: "inline",
 				}}
 				rightPane={{
 					title: "Overview",
+					titleMode: "inline",
 					body: <UiText>No docs pages are available.</UiText>,
-					borderIntent: "border",
+					borderIntent: "cardBorder",
 					backgroundIntent: "contentBackground",
 					textIntent: "text",
 					titleIntent: "sectionHeading",
-					titleMode: "inline",
 				}}
 			/>
 		);
@@ -87,11 +86,12 @@ export function InstallViewerScreen({
 		hasFooter: true,
 		hasHeader: false,
 		gutterColumns: theme.chrome.framePaneGap,
-		leftTitleRows: 1,
-		rightTitleRows: 0,
+		leftTitleRows: 2,
+		rightTitleRows: 2,
 	});
-	const contentRows = Math.max(1, geometry.rightTextRows - 5);
-	const contentColumns = Math.max(20, geometry.rightTextColumns - 4);
+	const contentRows = Math.max(1, geometry.rightTextRows);
+	const contentColumns = Math.max(1, geometry.rightTextColumns);
+	const sidebarMaxWidth = Math.max(1, geometry.leftTextColumns);
 
 	const content = getContent(currentItem.slug, currentItem.title);
 	const docsViewport = computeDocsViewport(
@@ -141,26 +141,16 @@ export function InstallViewerScreen({
 		<InstallSidebar
 			items={navItems}
 			selectedIndex={navigation.safeIndex}
-			maxWidth={geometry.leftTextColumns}
+			maxWidth={sidebarMaxWidth}
 			currentSection={currentItem.sectionTitle}
 			mode={sidebarMode}
 		/>
 	);
-	const footer = installStatusBar(
-		navigation.safeIndex,
-		navItems.length,
-		navigation.currentSectionIndex,
-		navigation.sectionCount,
-		docsViewport.startLine,
-		docsViewport.endLine,
-		docsViewport.totalLines,
-		sidebarMode,
-		navigation.startupNote,
-	);
+	const footer = installStatusBar(navigation.safeIndex, navItems.length, navigation.startupNote);
 	const contentPaneMeta = `${docsViewport.startLine}-${docsViewport.endLine}/${Math.max(docsViewport.totalLines, 1)}`;
 	const contentPaneTitle = truncateLine(
 		`${currentItem.title}  ${contentPaneMeta}`,
-		Math.max(1, contentColumns),
+		Math.max(1, geometry.rightTextColumns),
 	);
 
 	return (
@@ -170,33 +160,22 @@ export function InstallViewerScreen({
 			leftWidth={theme.layout.sidebarWidth}
 			showHeader={false}
 			leftPane={{
-				title: "Navigation",
+				title: "Installation Docs",
+				titleMode: "inline",
 				body: sidebar,
 				borderIntent: "sidebarBorder",
 				backgroundIntent: "sidebarBackground",
 				textIntent: "sidebarItemText",
 				titleIntent: "sidebarSectionText",
-				titleMode: "inline",
-				borderStyle: "single",
 			}}
 			rightPane={{
-				body: (
-					<Box flexDirection="column" flexGrow={1}>
-						<Panel borderIntent="cardBorder">
-							<UiText intent="sectionHeading" bold>
-								{contentPaneTitle}
-							</UiText>
-						</Panel>
-						<Panel borderIntent="cardBorder" flexGrow={1}>
-							<InstallContentPane viewport={docsViewport} />
-						</Panel>
-					</Box>
-				),
-				borderIntent: "border",
+				title: contentPaneTitle,
+				titleMode: "inline",
+				body: <InstallContentPane viewport={docsViewport} />,
+				borderIntent: "cardBorder",
 				backgroundIntent: "contentBackground",
 				textIntent: "text",
-				titleMode: "none",
-				borderStyle: "none",
+				titleIntent: "sectionHeading",
 			}}
 		/>
 	);

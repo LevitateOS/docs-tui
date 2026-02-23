@@ -64,7 +64,7 @@ export function computeDocsViewport(
 ): DocsViewport {
 	void styleContext;
 	const safeRows = Math.max(1, contentInnerRows);
-	const safeWidth = Math.max(20, contentWidth);
+	const safeWidth = Math.max(1, contentWidth);
 	const ast = buildDocumentAst(content, slug);
 	const allBodyRows = layoutDocumentRows(ast, safeWidth);
 

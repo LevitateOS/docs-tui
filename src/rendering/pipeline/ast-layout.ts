@@ -508,7 +508,7 @@ function trimTrailingSpacers(rows: StyledRow[]): StyledRow[] {
 }
 
 export function layoutDocumentRows(document: AstDocumentNode, width: number): StyledRow[] {
-	const safeWidth = normalizeTextWidth(width, 20);
+	const safeWidth = normalizeTextWidth(width, 1);
 	const rows: StyledRow[] = [];
 
 	if (document.intro && document.intro.length > 0) {
