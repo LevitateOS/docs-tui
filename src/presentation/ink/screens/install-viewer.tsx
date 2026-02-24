@@ -115,6 +115,7 @@ export function InstallViewerScreen({
 		scroll.scrollBy(delta, docsViewport.maxScroll);
 		navigation.clearStartupNote();
 	};
+	const pageJump = Math.max(1, contentRows - 1);
 
 	useHotkeys(["left", "h"], () => movePage(-1));
 	useHotkeys(["right", "l"], () => movePage(1));
@@ -122,8 +123,8 @@ export function InstallViewerScreen({
 	useHotkeys(["]", "}"], () => moveSection(1));
 	useHotkeys(["up", "k"], () => scrollBy(-1));
 	useHotkeys(["down", "j"], () => scrollBy(1));
-	useHotkeys(["pageup", "b"], () => scrollBy(-10));
-	useHotkeys(["pagedown", "space"], () => scrollBy(10));
+	useHotkeys(["pageup", "b"], () => scrollBy(-pageJump));
+	useHotkeys(["pagedown", "space"], () => scrollBy(pageJump));
 	useHotkeys(["tab"], () => {
 		setSidebarMode((previous) => (previous === "focus-section" ? "all-sections" : "focus-section"));
 		navigation.clearStartupNote();
@@ -146,15 +147,7 @@ export function InstallViewerScreen({
 			mode={sidebarMode}
 		/>
 	);
-	const footer = installStatusBar(
-		navigation.safeIndex,
-		navItems.length,
-		sidebarMode,
-		docsViewport.startItem,
-		docsViewport.endItem,
-		docsViewport.totalItems,
-		navigation.startupNote,
-	);
+	const footer = installStatusBar(navigation.safeIndex, navItems.length, navigation.startupNote);
 	const contentPaneMeta = `lines ${docsViewport.startItem}-${docsViewport.endItem}/${Math.max(docsViewport.totalItems, 1)}`;
 	const contentPaneTitle = truncateLine(
 		`${currentItem.title}  ${contentPaneMeta}`,

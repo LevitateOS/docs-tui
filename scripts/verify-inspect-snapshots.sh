@@ -8,11 +8,13 @@ OUT_BASE="$ROOT/.artifacts/out/docs/tui-inspect-regression"
 COLUMNS=120
 ROWS=36
 SECONDS=2
-SLUGS=(installation-disk cli-reference faq)
+SLUGS=(installation-disk cli-reference faq helpers-commands helpers-overview)
 EXPECTED=(
   001-installation-disk.txt
   002-cli-reference.txt
   003-faq.txt
+  004-helpers-commands.txt
+  005-helpers-overview.txt
 )
 
 if [ ! -d "$SNAP_DIR" ]; then
@@ -29,7 +31,9 @@ cargo run -p levitate-xtask -- docs inspect \
   --out-dir "$OUT_BASE" \
   --slug "${SLUGS[0]}" \
   --slug "${SLUGS[1]}" \
-  --slug "${SLUGS[2]}" >/dev/null
+  --slug "${SLUGS[2]}" \
+  --slug "${SLUGS[3]}" \
+  --slug "${SLUGS[4]}" >/dev/null
 
 LATEST_RUN="$(ls -1dt "$OUT_BASE"/run-* 2>/dev/null | head -n 1 || true)"
 if [ -z "$LATEST_RUN" ] || [ ! -d "$LATEST_RUN" ]; then

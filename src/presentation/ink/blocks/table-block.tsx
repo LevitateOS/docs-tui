@@ -10,7 +10,22 @@ import type { BlockComponentProps } from "./types";
 import type { BlockPlugin } from "./contracts";
 import { useIntentColor } from "./shared/intent-color";
 import { inlineContentToPlainText } from "./shared/rich-text-renderer";
-import { RichTableRow, type TableCellContent } from "../primitives/rich-table-row";
+import {
+	RichTableRow,
+	TABLE_COLUMN_SEPARATOR,
+	type TableCellContent,
+} from "../primitives/rich-table-row";
+
+function tableDividerLine(columnWidths: ReadonlyArray<number>, rowWidth: number): string {
+	const junction = "─┼─";
+	const natural = columnWidths
+		.map((width) => horizontalRule(Math.max(1, width), "─"))
+		.join(junction);
+	if (natural.length >= rowWidth) {
+		return natural.slice(0, rowWidth);
+	}
+	return `${natural}${horizontalRule(rowWidth - natural.length, "─")}`;
+}
 
 function computeColumnWidths(matrix: ReadonlyArray<ReadonlyArray<string>>): number[] {
 	const columnCount = matrix.reduce((max, row) => Math.max(max, row.length), 0);
@@ -44,25 +59,43 @@ export function TableBlockView({
 	const tableWidth = Math.max(1, safeWidth - indent);
 	const backgroundColor = useIntentColor("cardBackground");
 	const dividerColor = useIntentColor("dimText");
+	const separatorWidth = (widths.length - 1) * TABLE_COLUMN_SEPARATOR.length;
+	const maxContentWidth = Math.max(1, tableWidth - separatorWidth);
+	const normalizedWidths = (() => {
+		const current = widths.reduce((sum, width) => sum + width, 0);
+		if (current <= maxContentWidth) {
+			return widths;
+		}
+		const scale = maxContentWidth / current;
+		const scaled = widths.map((width) => Math.max(1, Math.floor(width * scale)));
+		let remaining = maxContentWidth - scaled.reduce((sum, width) => sum + width, 0);
+		let index = 0;
+		while (remaining > 0) {
+			scaled[index % scaled.length] += 1;
+			remaining -= 1;
+			index += 1;
+		}
+		return scaled;
+	})();
 
 	return (
 		<Box flexDirection="column" paddingLeft={indent} width={safeWidth}>
 			<RichTableRow
 				cells={headers as ReadonlyArray<TableCellContent>}
-				columnWidths={widths}
+				columnWidths={normalizedWidths}
 				rowWidth={tableWidth}
 				fallbackIntent="sectionHeading"
 				backgroundIntent="cardBackground"
 				bold
 			/>
 			<Text color={dividerColor} backgroundColor={backgroundColor}>
-				{horizontalRule(tableWidth, "─")}
+				{tableDividerLine(normalizedWidths, tableWidth)}
 			</Text>
 			{rows.map((row, rowIndex) => (
 				<RichTableRow
 					key={`table-row-${rowIndex}`}
 					cells={row as ReadonlyArray<TableCellContent>}
-					columnWidths={widths}
+					columnWidths={normalizedWidths}
 					rowWidth={tableWidth}
 					fallbackIntent="text"
 					backgroundIntent="cardBackground"

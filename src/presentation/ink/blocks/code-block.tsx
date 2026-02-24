@@ -1,21 +1,29 @@
 import { Box, Text } from "ink";
 import { defaultDocsBlockRendererKey, type CodeBlock } from "@levitate/docs-content";
-import { parseSyntaxTokenLine, resolveChromeGlyphSet, truncateLine } from "@levitate/tui-kit";
+import {
+	parseSyntaxTokenLine,
+	resolveChromeGlyphSet,
+	RichTextLine,
+	truncateLine,
+	type RichTextRun,
+} from "@levitate/tui-kit";
 import type { ReactNode } from "react";
 import type { BlockComponentProps } from "./types";
 import type { BlockPlugin } from "./contracts";
 import { codeSnapshotLines } from "./shared/content-utils";
 import { useIntentColor } from "./shared/intent-color";
 
+const CODE_LINE_NUMBER_PADDING = 1;
 type SyntaxToken = {
 	text: string;
 	color?: string;
 };
 
-const CODE_LINE_NUMBER_PADDING = 1;
-const CODE_CONTENT_SAFETY_MARGIN = 1;
+function lineNumberText(sourceLine: number, digits: number): string {
+	return String(sourceLine).padStart(digits, " ");
+}
 
-function pushToken(row: SyntaxToken[], text: string, color?: string): void {
+function pushSyntaxToken(row: SyntaxToken[], text: string, color?: string): void {
 	if (text.length === 0) {
 		return;
 	}
@@ -29,50 +37,56 @@ function pushToken(row: SyntaxToken[], text: string, color?: string): void {
 
 function wrapSyntaxRows(line: string, width: number): SyntaxToken[][] {
 	const safeWidth = Math.max(1, width);
+	if (line.length === 0) {
+		return [[]];
+	}
 	const tokens = parseSyntaxTokenLine(line);
 	if (tokens.length === 0) {
-		return [[{ text: "" }]];
+		return [[]];
 	}
-
 	const rows: SyntaxToken[][] = [];
 	let current: SyntaxToken[] = [];
 	let currentWidth = 0;
 	const flush = () => {
-		rows.push(current.length > 0 ? current : [{ text: "" }]);
+		rows.push(current);
 		current = [];
 		currentWidth = 0;
 	};
-
 	for (const token of tokens) {
 		for (const char of token.text) {
 			if (currentWidth >= safeWidth) {
 				flush();
 			}
-			pushToken(current, char, token.color);
+			pushSyntaxToken(current, char, token.color);
 			currentWidth += 1;
 		}
 	}
-
 	flush();
+	if (rows.length === 0) {
+		return [[]];
+	}
 	return rows;
 }
 
-function tokensWidth(tokens: ReadonlyArray<SyntaxToken>): number {
+function syntaxRowWidth(tokens: ReadonlyArray<SyntaxToken>): number {
 	return tokens.reduce((total, token) => total + token.text.length, 0);
 }
 
-function padTokens(tokens: ReadonlyArray<SyntaxToken>, width: number): SyntaxToken[] {
-	const safeWidth = Math.max(1, width);
-	const padded = tokens.map((token) => ({ ...token }));
-	const missing = safeWidth - tokensWidth(padded);
+function syntaxRowToRuns(tokens: ReadonlyArray<SyntaxToken>, width: number): RichTextRun[] {
+	const visibleTokens = tokens.filter((token) => token.text.length > 0);
+	const runs: RichTextRun[] = visibleTokens.map((token) => ({
+		text: token.text,
+		literalColor: token.color,
+		intent: "text" as const,
+	}));
+	const missing = Math.max(0, width - syntaxRowWidth(visibleTokens));
 	if (missing > 0) {
-		padded.push({ text: " ".repeat(missing) });
+		runs.push({
+			text: " ".repeat(missing),
+			intent: "text",
+		});
 	}
-	return padded;
-}
-
-function lineNumberText(sourceLine: number, digits: number): string {
-	return String(sourceLine).padStart(digits, " ");
+	return runs;
 }
 
 export function CodeBlockView({
@@ -85,11 +99,10 @@ export function CodeBlockView({
 	const sourceLines = codeSnapshotLines(block);
 	const lineDigits = Math.max(2, String(Math.max(1, sourceLines.length)).length);
 	const lineNumberGutter = lineDigits + CODE_LINE_NUMBER_PADDING + 1;
-	const codeInnerWidth = Math.max(1, innerWidth - lineNumberGutter - CODE_CONTENT_SAFETY_MARGIN);
+	const codeInnerWidth = Math.max(1, innerWidth - lineNumberGutter);
 	const borderColor = useIntentColor("cardBorder");
 	const headingColor = useIntentColor("accent");
 	const dimTextColor = useIntentColor("dimText");
-	const textColor = useIntentColor("text");
 	const chrome = resolveChromeGlyphSet("single");
 	const labelParts = [block.language.toUpperCase()];
 	if (typeof block.filename === "string" && block.filename.length > 0) {
@@ -119,27 +132,23 @@ export function CodeBlockView({
 				</Box>
 			) : (
 				sourceLines.map((line, lineIndex) => {
-					const wrapped = wrapSyntaxRows(line, codeInnerWidth).map((row) =>
-						padTokens(row, codeInnerWidth),
-					);
-					return wrapped.map((row, wrappedIndex) => (
+					const wrapped = wrapSyntaxRows(line, codeInnerWidth);
+					return wrapped.map((tokens, wrappedIndex) => (
 						<Box key={`code-${lineIndex}-${wrappedIndex}`} flexDirection="row" width={safeWidth}>
 							<Text color={borderColor}>{chrome.v}</Text>
-							<Text color={dimTextColor}>
-								{wrappedIndex === 0
-									? `${lineNumberText(lineIndex + 1, lineDigits)}${" ".repeat(CODE_LINE_NUMBER_PADDING)}${chrome.v}`
-									: `${" ".repeat(lineDigits + CODE_LINE_NUMBER_PADDING)}${chrome.v}`}
-							</Text>
-							<Text color={textColor}>
-								{row.map((token, tokenIndex) => (
-									<Text
-										key={`token-${lineIndex}-${wrappedIndex}-${tokenIndex}`}
-										color={token.color ?? textColor}
-									>
-										{token.text.length > 0 ? token.text : " "}
-									</Text>
-								))}
-							</Text>
+							<RichTextLine
+								runs={[
+									{
+										text:
+											wrappedIndex === 0
+												? `${lineNumberText(lineIndex + 1, lineDigits)}${" ".repeat(CODE_LINE_NUMBER_PADDING)}${chrome.v}`
+												: `${" ".repeat(lineDigits + CODE_LINE_NUMBER_PADDING)}${chrome.v}`,
+										intent: "dimText",
+									},
+									...syntaxRowToRuns(tokens, codeInnerWidth),
+								]}
+								fallbackIntent="text"
+							/>
 							<Text color={borderColor}>{chrome.v}</Text>
 						</Box>
 					));
@@ -165,7 +174,7 @@ export const codeBlockPlugin: BlockPlugin<"code"> = {
 		}
 		const lineDigits = Math.max(2, String(Math.max(1, lines.length)).length);
 		const lineNumberGutter = lineDigits + CODE_LINE_NUMBER_PADDING + 1;
-		const codeInnerWidth = Math.max(1, innerWidth - lineNumberGutter - CODE_CONTENT_SAFETY_MARGIN);
+		const codeInnerWidth = Math.max(1, innerWidth - lineNumberGutter);
 		const wrappedRows = lines.reduce(
 			(total, line) => total + wrapSyntaxRows(line, codeInnerWidth).length,
 			0,

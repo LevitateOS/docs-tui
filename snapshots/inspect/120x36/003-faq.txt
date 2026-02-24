@@ -13,13 +13,13 @@
 │    Atomic Updates (A/B)      ││   Linux. It borrows Arch's philosophy (user maintains their own packages, minimal    │
 │    Variants                  ││   base that users build up) but substitutes hours of compilation with minutes of     │
 │                              ││   extraction from pre-built Rocky Linux packages.                                    │
-│ ▸ Rec Tooling                ││   Dimension        Arch Linux                   LevitateOS                           │
-│                              ││   ────────────────────────────────────────────────────────────────────────────────── │
-│                              ││   Target User      Power users seeking control  Same                                 │
-│                              ││   Philosophy       Minimal base, user builds    Same                                 │
-│                              ││   Package Manager  pacman + AUR                 recipe (Rhai scripts)                │
-│                              ││   Binary Source    Compiled from source         Extracted from Rocky 10 RPMs         │
-│                              ││   Build Time       Hours (compiling)            Minutes (extracting)                 │
+│ ▸ Rec Tooling                ││   Dimension       │ Arch Linux                  │ LevitateOS                         │
+│                              ││   ────────────────┼─────────────────────────────┼─────────────────────────────────── │
+│                              ││   Target User     │ Power users seeking control │ Same                               │
+│                              ││   Philosophy      │ Minimal base, user builds   │ Same                               │
+│                              ││   Package Manager │ pacman + AUR                │ recipe (Rhai scripts)              │
+│                              ││   Binary Source   │ Compiled from source        │ Extracted from Rocky 10 RPMs       │
+│                              ││   Build Time      │ Hours (compiling)           │ Minutes (extracting)               │
 │                              ││                                                                                      │
 │                              ││ Q >                                                                                  │
 │                              ││   Why not just use Arch?                                                             │
@@ -33,4 +33,4 @@
 │                              ││ Q >                                                                                  │
 │                              ││   Why not Fedora?                                                                    │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
- [docs] | q quit | h/l page | ↑/↓ j/k line | [/] section | tab focus-nav | g/G top/end | lines 1-31/337 | page 21/37
+ [docs] | q quit | ←/→↑/↓ h/j/k/l nav | PgUp/PgDn b/space page | g/G top/end | page 21/37

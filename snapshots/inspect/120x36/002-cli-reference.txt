@@ -17,7 +17,7 @@
 │                              ││ ╰──────────────────────────────────────────────────────────────────────────────────╯ │
 │                              ││                                                                                      │
 │                              ││ ┌ BASH ────────────────────────────────────────────────────────────────────────────┐ │
-│                              ││ │ 1 │recipe <command> [options] [arguments]                                       │  │
+│                              ││ │ 1 │recipe <command> [options] [arguments]                                        │ │
 │                              ││ └──────────────────────────────────────────────────────────────────────────────────┘ │
 │                              ││                                                                                      │
 │                              ││ ◆ Commands                                                                           │
@@ -27,10 +27,10 @@
 │                              ││ Install a package by executing its recipe lifecycle:                                 │
 │                              ││                                                                                      │
 │                              ││ ┌ BASH ────────────────────────────────────────────────────────────────────────────┐ │
-│                              ││ │ 1 │recipe install <package>                                                     │  │
-│                              ││ │ 2 │recipe install <package> --deps    # Also install dependencies               │  │
-│                              ││ │ 3 │recipe install ./path/to/pkg.rhai  # From local file                         │  │
+│                              ││ │ 1 │recipe install <package>                                                      │ │
+│                              ││ │ 2 │recipe install <package> --deps    # Also install dependencies                │ │
+│                              ││ │ 3 │recipe install ./path/to/pkg.rhai  # From local file                          │ │
 │                              ││ └──────────────────────────────────────────────────────────────────────────────────┘ │
 │                              ││                                                                                      │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
- [docs] | q quit | h/l page | ↑/↓ j/k line | [/] section | tab focus-nav | g/G top/end | lines 1-31/330 | page 9/37
+ [docs] | q quit | ←/→↑/↓ h/j/k/l nav | PgUp/PgDn b/space page | g/G top/end | page 9/37

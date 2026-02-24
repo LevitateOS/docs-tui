@@ -15,6 +15,8 @@ type RichTableRowProps = {
 	bold?: boolean;
 };
 
+export const TABLE_COLUMN_SEPARATOR = " │ ";
+
 function tableCellRuns(
 	cell: TableCellContent,
 	columnWidth: number,
@@ -48,22 +50,24 @@ function rowRuns({
 }): RichTextRun[] {
 	const runs: RichTextRun[] = [];
 	for (const [index, columnWidth] of columnWidths.entries()) {
-		const cell = tableCellRuns(cells[index] ?? "", columnWidth, fallbackIntent, backgroundIntent);
+		const cell = tableCellRuns(
+			cells[index] ?? "",
+			columnWidth,
+			fallbackIntent,
+			backgroundIntent,
+		).map((run) => (bold ? { ...run, bold: true } : run));
 		runs.push(...cell);
 		if (index < columnWidths.length - 1) {
 			runs.push({
-				text: "  ",
-				intent: fallbackIntent,
+				text: TABLE_COLUMN_SEPARATOR,
+				intent: "dimText",
 				backgroundIntent,
+				bold: false,
 			});
 		}
 	}
 
-	const truncated = truncateRunsToWidth(runs, rowWidth, fallbackIntent, backgroundIntent);
-	if (!bold) {
-		return truncated;
-	}
-	return truncated.map((run) => ({ ...run, bold: true }));
+	return truncateRunsToWidth(runs, rowWidth, fallbackIntent, backgroundIntent);
 }
 
 export function RichTableRow({

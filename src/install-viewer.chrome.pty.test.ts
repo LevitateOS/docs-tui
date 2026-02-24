@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 type PanelSpan = {
@@ -25,7 +25,7 @@ type SegmentInspection = {
 	bottomSegment?: string;
 };
 
-const TITLE_PATTERN = /lines\s+\d+-\d+\/\d+/;
+const TITLE_PATTERN = /[A-Za-z]/;
 const TOP_LEFT_GLYPHS = new Set(["┌", "╭", "╔", "┏"]);
 const TOP_RIGHT_GLYPHS = new Set(["┐", "╮", "╗", "┓"]);
 const BOTTOM_LEFT_GLYPHS = new Set(["└", "╰", "╚", "┗"]);
@@ -37,6 +37,17 @@ function runPtyCapture(columns: number, rows: number): string {
 	const tempDir = mkdtempSync(join(tmpdir(), "docs-tui-chrome-pty-"));
 	const transcriptPath = join(tempDir, `install-${columns}x${rows}.log`);
 	const command = `export TERM=xterm-256color; stty rows ${rows} cols ${columns}; timeout 2 bun src/main.ts --slug installation`;
+	return runScriptCapture(transcriptPath, command);
+}
+
+function runPtyCaptureSlug(columns: number, rows: number, slug: string): string {
+	const tempDir = mkdtempSync(join(tmpdir(), "docs-tui-chrome-pty-"));
+	const transcriptPath = join(tempDir, `${slug}-${columns}x${rows}.log`);
+	const command = `export TERM=xterm-256color; stty rows ${rows} cols ${columns}; timeout 2 bun src/main.ts --slug ${slug}`;
+	return runScriptCapture(transcriptPath, command);
+}
+
+function runScriptCapture(transcriptPath: string, command: string): string {
 	const result = spawnSync("script", ["-q", "-c", command, transcriptPath], {
 		cwd: process.cwd(),
 		env: { ...process.env, TERM: "xterm-256color" },
@@ -57,8 +68,88 @@ function runPtyCapture(columns: number, rows: number): string {
 		}
 		return readFileSync(transcriptPath, "utf8");
 	} finally {
-		rmSync(tempDir, { recursive: true, force: true });
+		rmSync(dirname(transcriptPath), { recursive: true, force: true });
 	}
+}
+
+type FenceInspection = {
+	ok: boolean;
+	reason?: string;
+};
+
+function inspectCodeFenceShape(lines: string[], panelSpan: PanelSpan): FenceInspection {
+	let panelBottomIndex = lines.length;
+	for (let index = panelSpan.lineIndex + 1; index < lines.length; index += 1) {
+		const line = lines[index] ?? "";
+		if (line.length <= panelSpan.right) {
+			continue;
+		}
+		if ((line[panelSpan.left] ?? "") === "└" && (line[panelSpan.right] ?? "") === "┘") {
+			panelBottomIndex = index;
+			break;
+		}
+	}
+
+	const candidates: Array<{ topIndex: number; left: number; right: number }> = [];
+	for (let index = panelSpan.lineIndex + 1; index < lines.length; index += 1) {
+		const line = lines[index] ?? "";
+		if (line.length <= panelSpan.right) {
+			continue;
+		}
+		const panelSegment = line.slice(panelSpan.left, panelSpan.right + 1);
+		const topMatch = /┌\s+[A-Z][A-Z0-9_. -]*\s+/.exec(panelSegment);
+		if (!topMatch) {
+			continue;
+		}
+		const leftLocal = panelSegment.indexOf("┌");
+		const rightLocal = panelSegment.lastIndexOf("┐");
+		if (leftLocal < 0 || rightLocal <= leftLocal) {
+			continue;
+		}
+		candidates.push({
+			topIndex: index,
+			left: panelSpan.left + leftLocal,
+			right: panelSpan.left + rightLocal,
+		});
+	}
+
+	if (candidates.length === 0) {
+		return { ok: false, reason: "missing code-fence top border" };
+	}
+
+	let verifiedFences = 0;
+	for (const fence of candidates) {
+		let bottomIndex = -1;
+		for (let index = fence.topIndex + 1; index < panelBottomIndex; index += 1) {
+			const line = lines[index] ?? "";
+			if (line.length <= fence.right) {
+				continue;
+			}
+
+			const leftChar = line[fence.left] ?? "";
+			const rightChar = line[fence.right] ?? "";
+			if (leftChar === "└" && rightChar === "┘") {
+				bottomIndex = index;
+				break;
+			}
+			if (leftChar !== "│" || rightChar !== "│") {
+				return {
+					ok: false,
+					reason: `code-fence side borders misaligned at line ${index}`,
+				};
+			}
+		}
+		if (bottomIndex < 0) {
+			continue;
+		}
+		verifiedFences += 1;
+	}
+
+	if (verifiedFences === 0) {
+		return { ok: false, reason: "missing complete code-fence box in viewport" };
+	}
+
+	return { ok: true };
 }
 
 function stripAnsi(text: string): string {
@@ -142,7 +233,14 @@ function inspectSegment(
 		};
 	}
 
-	const titleIndex = lines.findIndex((line) => titlePattern.test(line));
+	const structuralTitleIndex = span.lineIndex + 1;
+	const structuralTitleLine = lines[structuralTitleIndex] ?? "";
+	const titleIndex =
+		structuralTitleLine.length > span.right &&
+		(structuralTitleLine[span.left] ?? "") === "│" &&
+		(structuralTitleLine[span.right] ?? "") === "│"
+			? structuralTitleIndex
+			: lines.findIndex((line) => titlePattern.test(line));
 	if (titleIndex < 0) {
 		return {
 			segmentIndex,
@@ -264,6 +362,29 @@ describe("install viewer sidebar chrome", () => {
 				if (!inspection.ok) {
 					throw new Error(
 						`columns=${columns} segment=${segmentIndex} failed: ${inspection.reason ?? "unknown"}; span=[${inspection.span?.left ?? -1},${inspection.span?.right ?? -1}] title=${inspection.titleIndex ?? -1} seam=${inspection.seamIndex ?? -1} bottom=${inspection.bottomIndex ?? -1} top='${inspection.topSegment ?? ""}' seam='${inspection.seamSegment ?? ""}' bottom='${inspection.bottomSegment ?? ""}'`,
+					);
+				}
+			}
+		}
+	});
+});
+
+describe("helpers code-fence geometry", () => {
+	it("keeps side borders aligned across wrapped and blank rows", () => {
+		for (const columns of [96, 120]) {
+			const segments = splitSegments(runPtyCaptureSlug(columns, 36, "helpers-commands"));
+			expect(segments.length).toBeGreaterThanOrEqual(2);
+
+			for (const segmentIndex of [0, 1]) {
+				const lines = segments[segmentIndex] ?? [];
+				const panelSpan = findPanelTopSpan(lines, "right");
+				if (!panelSpan) {
+					throw new Error(`columns=${columns} segment=${segmentIndex} missing right panel span`);
+				}
+				const inspection = inspectCodeFenceShape(lines, panelSpan);
+				if (!inspection.ok) {
+					throw new Error(
+						`columns=${columns} segment=${segmentIndex} failed: ${inspection.reason ?? "unknown"}`,
 					);
 				}
 			}
