@@ -1,5 +1,8 @@
-columns=120
-rows=36
-seconds=2
-slugs=installation-disk,cli-reference,faq,helpers-commands,helpers-overview
-files=001-installation-disk.txt,002-cli-reference.txt,003-faq.txt,004-helpers-commands.txt,005-helpers-overview.txt
+run_dir=.artifacts/out/docs/tui-inspect-update/run-1772027757
+viewport=120x36 duration=2s
+total_slugs=5
+installation-disk => .artifacts/out/docs/tui-inspect-update/run-1772027757/001-installation-disk.txt
+cli-reference => .artifacts/out/docs/tui-inspect-update/run-1772027757/002-cli-reference.txt
+faq => .artifacts/out/docs/tui-inspect-update/run-1772027757/003-faq.txt
+helpers-commands => .artifacts/out/docs/tui-inspect-update/run-1772027757/004-helpers-commands.txt
+helpers-overview => .artifacts/out/docs/tui-inspect-update/run-1772027757/005-helpers-overview.txt

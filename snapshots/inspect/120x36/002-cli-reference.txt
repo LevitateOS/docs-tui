@@ -33,4 +33,4 @@
 │                              ││ └──────────────────────────────────────────────────────────────────────────────────┘ │
 │                              ││                                                                                      │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
- [docs] | q quit | ←/→↑/↓ h/j/k/l nav | PgUp/PgDn b/space page | g/G top/end | page 9/37
+ [s02-install-docs] | navigation | q quit | tab toggle pane | m sidebar mode | page 9/37 | h/l [/] pages/sections | j/k
