@@ -1,6 +1,7 @@
 {
   "name": "@levitate/docs-tui",
   "version": "0.2.0",
+  "deprecated": "Deprecated in favor of git@github.com:LevitateOS/tui-workspace.git (use tui/apps/s02-live-tools/install-docs).",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "bin": {

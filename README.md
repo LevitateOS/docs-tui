@@ -1,5 +1,16 @@
 # @levitate/docs-tui
 
+## DEPRECATED
+
+Deprecated as of 2026-02-24.
+
+Canonical TUI development moved to:
+- `git@github.com:LevitateOS/tui-workspace.git`
+- superproject path: `tui/apps/s02-live-tools/install-docs`
+
+This repository remains available for migration compatibility only.
+New feature work should not be added here.
+
 Interactive terminal docs viewer for LevitateOS, built on `@levitate/tui-kit`.
 
 Style change map: `style-map.md`
